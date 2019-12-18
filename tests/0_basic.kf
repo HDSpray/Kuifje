@@ -1,0 +1,5 @@
+x := 6;
+while (x > 0) do
+    y := x + y;
+    x := x - y;
+od;
