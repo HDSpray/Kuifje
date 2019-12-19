@@ -1,11 +1,5 @@
 module Syntax where
 
-data BExpr = BoolConst Bool
-           | Not BExpr 
-           | BBinary BBinOp BExpr BExpr 
-           | RBinary RBinOp AExpr AExpr 
-           deriving (Show)
-
 data BBinOp = And 
             | Or 
             deriving (Show)
@@ -17,14 +11,17 @@ data RBinOp = Gt
             | Eq
             deriving (Show)
 
-data AExpr = Var String 
-
+data Expr = Var String 
            | RationalConst Rational
+           | Neg Expr 
+           | ABinary ABinOp Expr Expr 
+           | Ichoice Expr Expr Expr
 
-           
-           | Neg AExpr 
-           | ABinary ABinOp AExpr AExpr 
-           | Ichoice AExpr AExpr AExpr
+           -- Bool Expr
+           | BoolConst Bool
+           | Not Expr 
+           | BBinary BBinOp Expr Expr 
+           | RBinary RBinOp Expr Expr 
            deriving (Show)
 
 data ABinOp = Add 
@@ -34,12 +31,12 @@ data ABinOp = Add
             deriving (Show)
 
 data Stmt = Seq [Stmt] 
-          | Assign String AExpr 
-          | If BExpr Stmt Stmt 
-          | While BExpr Stmt 
+          | Assign String Expr 
+          | If Expr Stmt Stmt 
+          | While Expr Stmt 
           | Skip 
-          | Leak AExpr
+          | Leak Expr
           | Vis String
-          | Echoice Stmt Stmt AExpr
+          | Echoice Stmt Stmt Expr
           deriving (Show)
 

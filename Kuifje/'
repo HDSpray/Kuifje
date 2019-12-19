@@ -158,7 +158,10 @@ decimalRat =
      return (n % (10 ^ pow10))
 
 expression :: Parser Expr
-expression = ichoiceExpr <|> buildExpressionParser operators term 
+expression = ichoiceExpr <|> buildExpressionParser aOperators term 
+
+-- bExpression :: Parser Expr
+-- bExpression = buildExpressionParser bOperators bTerm
 
 operators = [ [Prefix (reservedOp "-"  >> return (Neg             ))          ]
              , [Prefix (reservedOp "~"  >> return (Not             ))          ]
