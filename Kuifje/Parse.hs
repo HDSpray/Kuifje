@@ -14,7 +14,6 @@ import Text.ParserCombinators.Parsec.Expr
 import Text.ParserCombinators.Parsec.Language
 import qualified Text.ParserCombinators.Parsec.Token as Token
 
-
 languageDef =
    emptyDef { Token.commentStart    = "/*"
             , Token.commentEnd      = "*/"
@@ -40,8 +39,20 @@ languageDef =
                                       , "leak"
                                       , "observe"
                                       ]
-            , Token.reservedOpNames = ["+", "-", "*", "/", ":=", "<=", ">="
-                                      , "==", "<", ">", "&&", "||", "~"
+
+            , Token.reservedOpNames = ["+"
+                                      , "-"
+                                      , "*"
+                                      , "/"
+                                      , "<"
+                                      , ">"
+                                      , "~"
+                                      , ":="
+                                      , "<="
+                                      , ">="
+                                      , "=="
+                                      , "&&"
+                                      , "||"
                                       ]
             }
 
@@ -56,13 +67,9 @@ parens     = Token.parens     lexer -- parses surrounding parenthesis:
                                     -- uses p to parse what's inside them
 brackets   = Token.brackets   lexer -- exterior choice
 angles     = Token.angles     lexer -- interior choice
-integer    = Token.integer    lexer -- parses an integer
-float      = Token.float      lexer -- parses an integer
-natOrFloat = Token.naturalOrFloat lexer -- parses an integer
 semi       = Token.semi       lexer -- parses a semicolon
 whiteSpace = Token.whiteSpace lexer -- parses whitespace
 natural    = Token.natural    lexer
-
 
 whileParser :: Parser Stmt
 whileParser = whiteSpace >> statement
@@ -70,6 +77,7 @@ whileParser = whiteSpace >> statement
 statement :: Parser Stmt
 statement =   sequenceOfStmt -- <|> parens statement
 
+sequenceOfStmt :: Parser Stmt
 sequenceOfStmt =
   do list <- (endBy1 statement' semi)
      -- If there's only one statement return it without using Seq.
@@ -141,7 +149,6 @@ ichoiceExpr =
      expr2 <- aExpression
      return $ Ichoice expr1 expr2 expr
 
-
 aExpression :: Parser AExpr
 aExpression = ichoiceExpr <|> buildExpressionParser aOperators aTerm
 
@@ -155,25 +162,22 @@ aOperators = [ [Prefix (reservedOp "-"   >> return (Neg             ))          
                 Infix  (reservedOp "-"   >> return (ABinary Subtract)) AssocLeft]
               ]
 
-bOperators = [ [Prefix (reservedOp "~" >> return (Not             ))          ]
+bOperators = [ [Prefix (reservedOp "~"  >> return (Not             ))          ]
              , [Infix  (reservedOp "&&" >> return (BBinary And     )) AssocLeft,
-                Infix  (reservedOp "||"  >> return (BBinary Or      )) AssocLeft]
+                Infix  (reservedOp "||" >> return (BBinary Or      )) AssocLeft]
              ]
 
 decimalRat :: Monad m => ParsecT String u m Rational
-decimalRat = (do
-        ns <- many digit
-        ms <- (char '.' >> many digit) <|> return []
-        let pow10 = toInteger $ length ms
-        let (Right n) = parse natural "" (ns ++ ms)
-        return (n % (10 ^ pow10))) 
-        <?> "rational"
+decimalRat = 
+  do ns <- many digit
+     ms <- (char '.' >> many digit) <|> return []
+     let pow10 = toInteger $ length ms
+     let (Right n) = parse natural "" (ns ++ ms)
+     return (n % (10 ^ pow10))
 
 aTerm =  parens aExpression
      <|> liftM Var identifier
      <|> liftM RationalConst decimalRat
-     -- <|> liftM RationalConst float -- IntConst integer
-     -- <|> liftM IntConst integer
 
 bTerm =  parens bExpression
      <|> (reserved "true"  >> return (BoolConst True ))
@@ -191,7 +195,6 @@ relation =   (reservedOp ">" >> return Gt)
          <|> (reservedOp "<=" >> return Le)
          <|> (reservedOp ">=" >> return Ge)
          <|> (reservedOp "==" >> return Eq)
-
 
 -- Output only
 parseString :: String -> Stmt
