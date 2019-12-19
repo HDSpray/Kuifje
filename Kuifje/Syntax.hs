@@ -1,48 +1,45 @@
-module Kuifje.Syntax where
+module Syntax where
 
-import Data.List
+data BExpr = BoolConst Bool
+           | Not BExpr 
+           | BBinary BBinOp BExpr BExpr 
+           | RBinary RBinOp AExpr AExpr 
+           deriving (Show)
 
-type Id = String
-type Program = [Bind]
+data BBinOp = And 
+            | Or 
+            deriving (Show)
 
-data Stmt
-    = Var Id 
-    | Skip
-    | Seq Stmt Stmt
-    | Assign Id Expr
-    | WHILE Expr Stmt
-    | IF Expr Stmt Stmt
-    | LEAK Expr
-    | HIO Id
-    | VIS Id
+data RBinOp = Gt
+            | Ge
+            | Lt
+            | Le
+            | Eq
+            deriving (Show)
 
+data AExpr = Var String 
 
-data Expr
-    = Var Id
-    | Num Integer
-    | Bool Bool
+           | RationalConst Rational
 
-    | App Expr Expr
-    | WHILE Expr Expr
-    | IF Expr Expr Expr
-    | LEAK Expr
-    | IChoice Expr Int Expr
-    | EChoice Expr Int Expr
+           
+           | Neg AExpr 
+           | ABinary ABinOp AExpr AExpr 
+           | Ichoice AExpr AExpr AExpr
+           deriving (Show)
 
-data Bind = Bind Id Type [Id] Exp
-  deriving (Read, Show, Eq)
+data ABinOp = Add 
+            | Subtract 
+            | Multiply 
+            | Divide 
+            deriving (Show)
 
-data Op = Add
-	| Sub
- 	| Mul
- 	| Quot
-	| Rem
-	| Neg
-	| Gt
- 	| Ge
-	| Lt
-	| Le
-	| Eq
-	| Ne
-	deriving (Show, Eq, Read)
+data Stmt = Seq [Stmt] 
+          | Assign String AExpr 
+          | If BExpr Stmt Stmt 
+          | While BExpr Stmt 
+          | Skip 
+          | Leak AExpr
+          | Vis String
+          | Echoice Stmt Stmt AExpr
+          deriving (Show)
 

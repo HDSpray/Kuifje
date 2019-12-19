@@ -1,56 +1,19 @@
-module ParseWhile where
+module Parse where
 
 
+import Syntax
+
+import Prelude
 import System.IO 
+import Data.Ratio
 import Control.Monad
 import Text.ParserCombinators.Parsec
+import Text.Parsec.Char
+import Text.Parsec (ParsecT)
 import Text.ParserCombinators.Parsec.Expr
 import Text.ParserCombinators.Parsec.Language
 import qualified Text.ParserCombinators.Parsec.Token as Token
 
-
-data BExpr = BoolConst Bool
-           | Not BExpr 
-           | BBinary BBinOp BExpr BExpr 
-           | RBinary RBinOp AExpr AExpr 
-           deriving (Show)
-
-data BBinOp = And 
-            | Or 
-            deriving (Show)
-
-data RBinOp = Gt
-            | Ge
-            | Lt
-            | Le
-            | Eq
-            deriving (Show)
-
-data AExpr = Var String 
-           | IntConst Integer 
-           | Neg AExpr 
-           | ABinary ABinOp AExpr AExpr 
-           | Ichoice AExpr AExpr AExpr
-           deriving (Show)
-
-data Expr = AExpr | BExpr deriving (Show)
-
-data ABinOp = Add 
-            | Subtract 
-            | Multiply 
-            | Divide 
-            deriving (Show)
-
-data Stmt = Seq [Stmt] 
-          | SVar String
-          | Assign String AExpr 
-          | If BExpr Stmt Stmt 
-          | While BExpr Stmt 
-          | Skip 
-          | Leak AExpr
-          | Vis String
-          | Echoice Stmt Stmt AExpr
-          deriving (Show)
 
 languageDef =
    emptyDef { Token.commentStart    = "/*"
@@ -58,8 +21,7 @@ languageDef =
             , Token.commentLine     = "//"
             , Token.identStart      = letter
             , Token.identLetter     = alphaNum
-            , Token.reservedNames   = [ "var"
-                                      , "if"
+            , Token.reservedNames   = [ "if"
                                       , "then"
                                       , "else"
                                       , "fi"
@@ -95,8 +57,11 @@ parens     = Token.parens     lexer -- parses surrounding parenthesis:
 brackets   = Token.brackets   lexer -- exterior choice
 angles     = Token.angles     lexer -- interior choice
 integer    = Token.integer    lexer -- parses an integer
+float      = Token.float      lexer -- parses an integer
+natOrFloat = Token.naturalOrFloat lexer -- parses an integer
 semi       = Token.semi       lexer -- parses a semicolon
 whiteSpace = Token.whiteSpace lexer -- parses whitespace
+natural    = Token.natural    lexer
 
 
 whileParser :: Parser Stmt
@@ -117,7 +82,6 @@ statement' =   parens statement'
            <|> whileStmt
            <|> skipStmt
            <|> assignStmt
-           <|> varStmt
            <|> vidStmt
            <|> leakStmt
 
@@ -158,12 +122,6 @@ assignStmt =
 skipStmt :: Parser Stmt
 skipStmt = reserved "skip" >> return Skip
 
-varStmt :: Parser Stmt
-varStmt = 
-  do reserved "var" <|> reserved "hid"
-     var <- identifier
-     return $ SVar var
-
 vidStmt :: Parser Stmt
 vidStmt = 
   do reserved "vis" 
@@ -202,9 +160,20 @@ bOperators = [ [Prefix (reservedOp "~" >> return (Not             ))          ]
                 Infix  (reservedOp "||"  >> return (BBinary Or      )) AssocLeft]
              ]
 
+decimalRat :: Monad m => ParsecT String u m Rational
+decimalRat = (do
+        ns <- many digit
+        ms <- (char '.' >> many digit) <|> return []
+        let pow10 = toInteger $ length ms
+        let (Right n) = parse natural "" (ns ++ ms)
+        return (n % (10 ^ pow10))) 
+        <?> "rational"
+
 aTerm =  parens aExpression
      <|> liftM Var identifier
-     <|> liftM IntConst integer
+     <|> liftM RationalConst decimalRat
+     -- <|> liftM RationalConst float -- IntConst integer
+     -- <|> liftM IntConst integer
 
 bTerm =  parens bExpression
      <|> (reserved "true"  >> return (BoolConst True ))
