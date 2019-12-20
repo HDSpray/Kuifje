@@ -15,7 +15,7 @@ data Expr = Var String
            | RationalConst Rational
            | Neg Expr 
            | ABinary ABinOp Expr Expr 
-           | Ichoice Expr Expr Expr
+           | Ichoice Expr Expr Expr -- (Expr Expr Prob)
 
            -- Bool Expr
            | BoolConst Bool
@@ -37,6 +37,6 @@ data Stmt = Seq [Stmt]
           | Skip 
           | Leak Expr
           | Vis String
-          | Echoice Stmt Stmt Expr
+          | Echoice Stmt Stmt Expr -- (Stmt Stmt Prob)
           deriving (Show)
 

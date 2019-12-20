@@ -160,7 +160,7 @@ decimalRat =
 expression :: Parser Expr
 expression = ichoiceExpr <|> buildExpressionParser operators term 
 
-operators = [ [Prefix (reservedOp "-"  >> return (Neg             ))          ]
+operators = [  [Prefix (reservedOp "-"  >> return (Neg             ))          ]
              , [Prefix (reservedOp "~"  >> return (Not             ))          ]
              , [Infix  (reservedOp "*"  >> return (ABinary Multiply)) AssocLeft,
                 Infix  (reservedOp "/"  >> return (ABinary Divide  )) AssocLeft,
