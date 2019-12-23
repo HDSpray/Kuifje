@@ -1,6 +1,7 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving, TupleSections #-}
 module TypeChecker where
 
+import qualified Env as E
 import Syntax
 
 
@@ -12,26 +13,68 @@ data Type = BoolType
           deriving (Show, Eq, Read)
 
 data TypeError = TypeMismatch
+               | NoSuchVariable String
+               | DifferentType
                 deriving (Show)
 
-typeCheck :: Stmt -> Either TypeError Stmt
-typeCheck (Seq ls) = 
-  if length ls == 1 
-     then typeCheck (head ls) 
-     else case typeCheck (head ls) of 
-            (Left e) -> Left e
-            (Right stmt) -> case typeCheck (Seq (tail ls)) of
-                            (Right (Seq rstmt)) -> (Right (Seq (stmt:rstmt)))
-                            (Right rstmt)       -> (Right (Seq (stmt:[rstmt])))
-                            e -> e
-typeCheck (Assign s e) = undefined
+type Gamma = E.Env Type
 
-
+initialGamma :: Gamma
+initialGamma = E.empty
 
 newtype TC a = TC (Either TypeError a) deriving (Monad, Functor, Applicative, Show)
 
 typeError :: TypeError -> TC a
 typeError = TC . Left
+
+typeCheck :: Gamma -> Stmt -> TC (Gamma, Stmt) -- Either TypeError Stmt
+typeCheck g (Seq []) = return (g, (Seq []))
+typeCheck g (Seq ls) = 
+        do (g', e)  <- typeCheck g (head ls) 
+           (g'', e) <- typeCheck g' (Seq (tail ls)) 
+           return (g', (Seq ls))
+typeCheck g (Assign s e) 
+  | Just t <- E.lookup g s = 
+          case exprCheck e of 
+            (TC (Left err)) -> typeError err
+            (TC (Right ty)) -> if t == ty 
+                                  then return (g, (Assign s e)) 
+                                  else typeError TypeMismatch
+  | otherwise = 
+          case exprCheck e of 
+            (TC (Left err)) -> typeError err
+            (TC (Right ty)) -> let g' = E.add g (s, ty) in 
+                                   return (g', (Assign s e))
+typeCheck g (If e stmt1 stmt2) = 
+        case exprCheck e of 
+          (TC (Left err)) -> typeError err
+          (TC (Right RationalType)) -> typeError TypeMismatch
+          (TC (Right BoolType)) -> do (g1, stmt1') <- typeCheck g stmt1
+                                      (g2, stmt2') <- typeCheck g stmt2
+                                      return (g1, (If e stmt1 stmt2))
+typeCheck g (While e stmt) = 
+        case exprCheck e of 
+          (TC (Left err)) -> typeError err
+          (TC (Right RationalType)) -> typeError TypeMismatch
+          (TC (Right BoolType)) -> do (g', stmt) <- typeCheck g stmt 
+                                      return (g', (While e stmt))
+typeCheck g Skip = return (g, Skip)
+typeCheck g (Leak e) = 
+        case exprCheck e of
+          (TC (Right _)) -> return (g, (Leak e))
+          (TC (Left er)) -> typeError er
+typeCheck g (Vis s) = return (g, (Vis s))
+typeCheck g (Echoice stmt1 stmt2 e) = 
+        case exprCheck e of 
+          (TC (Right BoolType)) -> typeError TypeMismatch
+          (TC (Left er)) -> typeError er
+          (TC (Right RationalType)) -> 
+                  do (g1, stmt1') <- typeCheck g stmt1
+                     (g2, stmt2') <- typeCheck g stmt2
+                     if g1 == g2 
+                        then return (g1, (Echoice stmt1 stmt2 e)) 
+                        else typeError TypeMismatch
+
 
 exprCheck :: Expr -> TC Type
 exprCheck (RationalConst _) = return RationalType
@@ -70,24 +113,3 @@ exprCheck (RBinary _ e1 e2) =
            if e1' == e2' && e1' == RationalType
               then return BoolType
               else typeError TypeMismatch
-
-
-        {--
-exprCheck :: Expr -> Either TypeError Type
-exprCheck (RationalConst ratinoal) = (Right RationalType)
-exprCheck (Neg rational) = (Right RationalType)
-exprCheck (ABinary op e1 e2) = (Right RationalType)
-exprCheck (Ichoice e1 e2 e) = 
-  case exprCheck e of
-    (Left e) -> Left e
-    (Right RationalType) -> 
-            case exprCheck e1 of 
-              (Left e) -> Left e
-              (Right e1') -> case exprCheck e2 of
-                               (Left e) -> Left e
-                               (Right e2') -> 
-                                  if e1' == e2' 
-                                     then (Right e1') 
-                                     else (Left (TypeMismatch e1' e2'))
-
---}

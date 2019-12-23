@@ -12,17 +12,17 @@ data RBinOp = Gt
             deriving (Show)
 
 data Expr = Var String 
-           | RationalConst Rational
-           | Neg Expr 
-           | ABinary ABinOp Expr Expr 
-           | Ichoice Expr Expr Expr -- (Expr Expr Prob)
+          | RationalConst Rational
+          | Neg Expr 
+          | ABinary ABinOp Expr Expr 
+          | Ichoice Expr Expr Expr -- (Expr Expr Prob)
 
-           -- Bool Expr
-           | BoolConst Bool
-           | Not Expr 
-           | BBinary BBinOp Expr Expr 
-           | RBinary RBinOp Expr Expr 
-           deriving (Show)
+          -- Bool Expr
+          | BoolConst Bool
+          | Not Expr 
+          | BBinary BBinOp Expr Expr 
+          | RBinary RBinOp Expr Expr 
+          deriving (Show)
 
 data ABinOp = Add 
             | Subtract 
