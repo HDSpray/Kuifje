@@ -9,6 +9,7 @@ data RBinOp = Gt
             | Lt
             | Le
             | Eq
+            | Ne
             deriving (Show)
 
 data Expr = Var String 
@@ -28,6 +29,7 @@ data ABinOp = Add
             | Subtract 
             | Multiply 
             | Divide 
+            -- | Rem
             deriving (Show)
 
 data Stmt = Seq [Stmt] 
