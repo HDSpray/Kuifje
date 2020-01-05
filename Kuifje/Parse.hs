@@ -173,14 +173,43 @@ operators = [  [Prefix (reservedOp "-"  >> return (Neg             ))          ]
 term =  parens expression
      <|> (reserved "true"  >> return (BoolConst True ))
      <|> (reserved "false" >> return (BoolConst False))
-     <|> liftM Var identifier
+
+     -- <|> liftM Var identifier
+     -- <|> vExpression
+     <|> tExpression
+
      <|> liftM RationalConst decimalRat
      <|> rExpression
+
+
+
+rightExpression = buildExpressionParser operators rterm
+rterm = parens rightExpression
+     <|> (reserved "true"  >> return (BoolConst True ))
+     <|> (reserved "false" >> return (BoolConst False))
+     <|> liftM RationalConst decimalRat
+     <|> liftM Var identifier
+
+tExpression = 
+  try 
+  (do a1 <- (liftM Var identifier)
+      op <- relation
+      a2 <- expression
+      return $ RBinary op a1 a2)
+  <|>
+  do a1 <- (liftM Var identifier)
+     return a1
+
+vExpression = 
+  do a1 <- (liftM Var identifier) 
+     op <- relation
+     a2 <- rightExpression
+     return $ RBinary op a1 a2
 
 rExpression =
   do a1 <- expression
      op <- relation
-     a2 <- expression
+     a2 <- rightExpression
      return $ RBinary op a1 a2
 
 relation =   (reservedOp ">" >> return Gt)

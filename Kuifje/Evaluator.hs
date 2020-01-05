@@ -1,7 +1,7 @@
 {-# LANGUAGE TemplateHaskell #-}
-module Evaluator where
-import qualified Env as E
+module Evaluator where 
 
+import qualified Env as E
 import Parse
 import Syntax
 
@@ -20,25 +20,49 @@ import System.IO
 import Text.ParserCombinators.Parsec
 import Text.ParserCombinators.Parsec.Expr
 
-data Value = R Rational | B Bool deriving (Show)
+data Value = R Rational | B Bool deriving (Show, Eq, Ord)
 type VEnv = E.Env Value
+type Gamma = E.Env Value 
 
 (.^) :: s -> ASetter s t a b -> b -> t
 (.^) s x y = set x y s
 
 
-parseString :: String -> Stmt
-parseString str =
-        case parse whileParser "" str of
-          Left e  -> error $ show e
-          Right r -> r
+program :: VEnv -> Stmt -> (Kuifje Gamma, VEnv)
+program ve (Seq ls) = let (g, ve') = program ve (head ls) in 
+                          if length ls > 1 
+                          then let (g', ve'') = program ve' (Seq (tail ls)) in (g <> g', ve'')
+                          else (g, ve')
 
+program ve (Assign id expr) = case evalExpr ve expr of 
+                             (R r) -> (update (\s -> (toDist s id r)), E.add ve (id, (R r)))
+                             (B b) -> (update (\s -> (toDistBool s id b)), E.add ve (id, (B b)))
+program ve (Syntax.If e s1 s2) = let (B b) = evalExpr ve e
+                                     (p1, ve')  = program ve s1
+                                     (p2, ve'') = program ve s2 in 
+                                 (cond (\s -> (uniform [b])) p1 p2, ve')
+program ve (Syntax.While e s) = let (B b) = evalExpr ve e 
+                                    (p, ve') = program ve s in
+                                ((while (\s -> (uniform [b])) p), ve')
+program ve (Syntax.Skip) = (Language.Kuifje.Syntax.Skip, ve)
+program ve (Leak e) = case evalExpr E.empty e of
+                     (R r) -> (observe (\s -> (uniform [r])), ve)
+                     (B b) -> (observe (\s -> (uniform [b])), ve)
+program ve (Vis s) = undefined
+program ve (Echoice s1 s2 e) = undefined -- let (R r) = evalExpr E.empty e in
+                        
 
-program :: Stmt -> Kuifje a
-program (Seq ls) = if length ls > 1 
-                    then program (head ls) <> program (Seq (tail ls))
-                    else program (head ls)
--- program (Assign id expr) = update (\s -> return (s.^id $ evalExpr E.empty expr))
+-- program (Assign id expr) = update (\s -> return (s.^(id) $ evalExpr E.empty expr))
+getRational :: Gamma -> String -> Rational
+getRational g s | Just (R t) <- E.lookup g s = t
+        | otherwise = error "Not going to happen"
+
+toDistBool :: Gamma -> String -> Bool -> Dist Gamma
+toDistBool g s x = uniform [(E.add g (s, (B x)))]
+
+toDist :: Gamma -> String -> Rational -> Dist Gamma
+toDist g s x = uniform [(E.add g (s, (R x)))]
+
 
 evalExpr :: VEnv -> Expr -> Value
 evalExpr e (Var s) | Just t <- E.lookup e s = t
@@ -53,13 +77,7 @@ evalExpr e (ABinary op expr1 expr2) =
               Subtract -> R (value1 - value2)
               Multiply -> R (value1 * value2)
               Divide   -> R (value1 / value2)
-{--
-evalExpr e (Ichoice expr1 expr2 expr3) = 
-        let R value1 = evalExpr e expr1
-            R value2 = evalExpr e expr2
-            R value3 = evalExpr e expr3 in
-            R value1
---}
+
 evalExpr e (BoolConst b) = B b
 evalExpr e (Not expr) = let B value = evalExpr e expr in B (not value)
 evalExpr e (BBinary op expr1 expr2) = 
@@ -78,3 +96,28 @@ evalExpr e (RBinary op expr1 expr2) =
               Le -> B (value1 <= value2)
               Eq -> B (value1 == value2)
               Ne -> B (value1 /= value2)
+
+
+example :: String
+example = "x := 1; y := 0; while (x > 0) do y := x + y; x := x - 1; od;"
+
+aProgram :: String -> VEnv
+aProgram s = let (g, ve) = program E.empty (Parse.parseString s) in ve
+
+project :: Dist (Dist Gamma) -> Dist (Dist Rational)
+project = fmap (fmap (\s -> getRational s "y"))
+
+initGamma :: Rational -> Gamma
+initGamma x = let g = E.add E.empty ("x", (R x)) in 
+               E.add g ("y", (R (0 % 1)))
+
+hyper :: Dist (Dist Rational)
+hyper = let (g, ve) = program E.empty (Parse.parseString example) in 
+            project $ hysem g (uniform [initGamma x | x <- [5..8]])
+
+main :: IO ()
+main = do
+  putStrLn "> hyper"
+  print hyper
+  putStrLn "> condEntropy bayesVuln hyper"
+  print $ condEntropy bayesVuln hyper
