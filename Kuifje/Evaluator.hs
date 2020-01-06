@@ -28,6 +28,10 @@ type Gamma = E.Env Value
 (.^) s x y = set x y s
 
 
+valueToBool :: Value -> Bool
+valueToBool (B b) = b
+
+
 program :: VEnv -> Stmt -> (Kuifje Gamma, VEnv)
 program ve (Seq ls) = let (g, ve') = program ve (head ls) in 
                           if length ls > 1 
@@ -41,9 +45,10 @@ program ve (Syntax.If e s1 s2) = let (B b) = evalExpr ve e
                                      (p1, ve')  = program ve s1
                                      (p2, ve'') = program ve s2 in 
                                  (cond (\s -> (uniform [b])) p1 p2, ve')
-program ve (Syntax.While e s) = let (B b) = evalExpr ve e 
-                                    (p, ve') = program ve s in
-                                ((while (\s -> (uniform [b])) p), ve')
+program ve (Syntax.While e s) = 
+        let (p, ve') = program ve s in 
+            ((while (\s -> (uniform [(valueToBool (evalExpr ve e))])) p), ve')
+--(B b) = evalExpr ve e 
 program ve (Syntax.Skip) = (Language.Kuifje.Syntax.Skip, ve)
 program ve (Leak e) = case evalExpr E.empty e of
                      (R r) -> (observe (\s -> (uniform [r])), ve)

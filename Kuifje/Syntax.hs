@@ -1,10 +1,13 @@
+{-# LANGUAGE GADTs, StandaloneDeriving #-}
+{-# LANGUAGE ExistentialQuantification #-}
+{-# LANGUAGE UndecidableInstances #-}
 module Syntax where
 
 data BBinOp = And 
             | Or 
             deriving (Show)
 
-data RBinOp = Gt
+data RBinOp = Gt 
             | Ge
             | Lt
             | Le
@@ -12,18 +15,22 @@ data RBinOp = Gt
             | Ne
             deriving (Show)
 
-data Expr = Var String 
-          | RationalConst Rational
-          | Neg Expr 
-          | ABinary ABinOp Expr Expr 
-          | Ichoice Expr Expr Expr -- (Expr Expr Prob)
+data Expr a where
+  Var :: String -> Expr a
+  RationalConst :: Rational -> Expr Rational
+  Neg :: Expr Rational -> Expr Rational
+  ABinary :: ABinOp -> Expr Bool -> Expr Bool -> Expr Bool
+  Ichoice :: Expr a -> Expr a -> Expr Rational -> Expr a
+  BoolConst :: Expr Bool -> Expr Bool
+  Not :: Expr Bool -> Expr Bool
+  BBinary :: BBinOp -> Expr Bool -> Expr Bool -> Expr Bool
+  RBinary :: RBinOp -> Expr Rational -> Expr Rational -> Expr Bool
+deriving instance Show a => Show (Expr a)
 
-          -- Bool Expr
-          | BoolConst Bool
-          | Not Expr 
-          | BBinary BBinOp Expr Expr 
-          | RBinary RBinOp Expr Expr 
-          deriving (Show)
+
+-- evalExpr :: Expr a -> (s -> D a)
+-- evalExpr = undefined
+
 
 data ABinOp = Add 
             | Subtract 
@@ -32,13 +39,13 @@ data ABinOp = Add
             -- | Rem
             deriving (Show)
 
-data Stmt = Seq [Stmt] 
-          | Assign String Expr 
-          | If Expr Stmt Stmt 
-          | While Expr Stmt 
+data Stmt = 
+        Seq [Stmt] 
+          | forall a. (Show a) => Assign String (Expr a)
+          | If (Expr Bool) Stmt Stmt 
+          | While (Expr Bool) Stmt 
           | Skip 
-          | Leak Expr
+          | forall a. (Show a) => Leak (Expr a)
           | Vis String
-          | Echoice Stmt Stmt Expr -- (Stmt Stmt Prob)
-          deriving (Show)
-
+          | Echoice Stmt Stmt (Expr Rational)-- (Stmt Stmt Prob)
+deriving instance Show Stmt

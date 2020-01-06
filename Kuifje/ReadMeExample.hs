@@ -21,7 +21,6 @@ import Data.Ratio
 -- | State space for the program.
 
 
-
 data Value = R Rational | B Bool deriving (Show, Eq, Ord)
 type Gamma = E.Env Value
 
