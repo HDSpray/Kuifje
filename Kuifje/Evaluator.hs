@@ -1,4 +1,5 @@
 {-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE TypeOperators #-}
 module Evaluator where 
 
 import qualified Env as E
@@ -24,6 +25,7 @@ data Value = R Rational | B Bool deriving (Show, Eq, Ord)
 type VEnv = E.Env Value
 type Gamma = E.Env Value 
 
+
 (.^) :: s -> ASetter s t a b -> b -> t
 (.^) s x y = set x y s
 
@@ -34,16 +36,21 @@ program ve (Seq ls) = let (g, ve') = program ve (head ls) in
                           then let (g', ve'') = program ve' (Seq (tail ls)) in (g <> g', ve'')
                           else (g, ve')
 
-program ve (Assign id expr) = case evalExpr ve expr of 
+program ve (Assign id expr) = let v = evalExpr ve expr in 
+                                  (update (\s -> (uniform [(E.add s (id, v))])), E.add ve (id, v))
+{-
+    case evalExpr ve expr of 
                              (R r) -> (update (\s -> (toDist s id r)), E.add ve (id, (R r)))
                              (B b) -> (update (\s -> (toDistBool s id b)), E.add ve (id, (B b)))
+    -}
 program ve (Syntax.If e s1 s2) = let (B b) = evalExpr ve e
                                      (p1, ve')  = program ve s1
                                      (p2, ve'') = program ve s2 in 
                                  (cond (\s -> (uniform [b])) p1 p2, ve')
-program ve (Syntax.While e s) = let (B b) = evalExpr ve e 
-                                    (p, ve') = program ve s in
-                                ((while (\s -> (uniform [b])) p), ve')
+program ve (Syntax.While e s) = -- let -- (B b) = evalExpr ve e 
+                                    -- (p, ve') = program ve s in
+                                -- ((while (\s -> (uniform [b])) p), ve')
+                                ((while (\s -> let (B b) = evalExpr s e in (uniform [b])) (fst (program ve s))), ve)
 program ve (Syntax.Skip) = (Language.Kuifje.Syntax.Skip, ve)
 program ve (Leak e) = case evalExpr E.empty e of
                      (R r) -> (observe (\s -> (uniform [r])), ve)
@@ -63,10 +70,13 @@ toDistBool g s x = uniform [(E.add g (s, (B x)))]
 toDist :: Gamma -> String -> Rational -> Dist Gamma
 toDist g s x = uniform [(E.add g (s, (R x)))]
 
+-- exprToDistBool :: Gamma -> Expr -> Dist Bool
+-- exprToDistBool g e = 
+
 
 evalExpr :: VEnv -> Expr -> Value
 evalExpr e (Var s) | Just t <- E.lookup e s = t
-                   | otherwise = error "No such variable"
+                   | otherwise = let t = E.lookup e "x" in error ("No such variable" ++ show(t))
 evalExpr e (RationalConst r) = R r
 evalExpr e (Neg expr) = let R value = evalExpr e expr in R (-1*value)
 evalExpr e (ABinary op expr1 expr2) = 
@@ -99,7 +109,7 @@ evalExpr e (RBinary op expr1 expr2) =
 
 
 example :: String
-example = "x := 1; y := 0; while (x > 0) do y := x + y; x := x - 1; od;"
+example = "x := 1; y := 0; z := z + 1; while (x > 0) do y := x + y; x := x - 1; od;"
 
 aProgram :: String -> VEnv
 aProgram s = let (g, ve) = program E.empty (Parse.parseString s) in ve
@@ -108,8 +118,11 @@ project :: Dist (Dist Gamma) -> Dist (Dist Rational)
 project = fmap (fmap (\s -> getRational s "y"))
 
 initGamma :: Rational -> Gamma
-initGamma x = let g = E.add E.empty ("x", (R x)) in 
-               E.add g ("y", (R (0 % 1)))
+initGamma x = let g = E.add E.empty ("x", (R x)) in E.add g ("y", (R (0 % 1)))
+
+
+
+
 
 hyper :: Dist (Dist Rational)
 hyper = let (g, ve) = program E.empty (Parse.parseString example) in 
