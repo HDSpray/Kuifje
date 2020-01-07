@@ -31,6 +31,8 @@ type Gamma = E.Env Value
 valueToBool :: Value -> Bool
 valueToBool (B b) = b
 
+program :: Stmt -> (s ~~> s)
+
 
 program :: VEnv -> Stmt -> (Kuifje Gamma, VEnv)
 program ve (Seq ls) = let (g, ve') = program ve (head ls) in 

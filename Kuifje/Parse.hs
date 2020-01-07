@@ -1,3 +1,8 @@
+{-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE GADTs, StandaloneDeriving #-}
+{-# LANGUAGE ExistentialQuantification #-}
+{-# LANGUAGE UndecidableInstances #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 module Parse where
 
 
@@ -13,6 +18,7 @@ import Text.Parsec (ParsecT)
 import Text.ParserCombinators.Parsec.Expr
 import Text.ParserCombinators.Parsec.Language
 import qualified Text.ParserCombinators.Parsec.Token as Token
+import Data.Functor.Identity
 
 languageDef =
    emptyDef { Token.commentStart    = "/*"
@@ -124,7 +130,7 @@ assignStmt :: Parser Stmt
 assignStmt =
   do var  <- identifier
      reservedOp ":="
-     expr <- expression
+     expr <- expression 
      return $ Assign var expr
 
 skipStmt :: Parser Stmt
@@ -142,14 +148,14 @@ leakStmt =
      expr <- expression
      return $ Leak expr
 
-ichoiceExpr :: Parser Expr
+-- ichoiceExpr :: Parser (Expr a)
 ichoiceExpr = 
   do expr <- angles expression
      expr1 <- expression
      expr2 <- expression
      return $ Ichoice expr1 expr2 expr
 
-decimalRat :: Monad m => ParsecT String u m Rational
+-- decimalRat :: Monad m => ParsecT String u m Rational
 decimalRat = 
   do ns <- many digit
      ms <- (char '.' >> many digit) <|> return []
@@ -157,9 +163,10 @@ decimalRat =
      let (Right n) = parse natural "" (ns ++ ms)
      return (n % (10 ^ pow10))
 
-expression :: Parser Expr
+-- expression :: Parser (Expr a)
 expression = ichoiceExpr <|> buildExpressionParser operators term 
 
+-- operators :: forall a. Show a => [[Operator Char st (Expr a)]]
 operators = [  [Prefix (reservedOp "-"  >> return (Neg             ))          ]
              , [Prefix (reservedOp "~"  >> return (Not             ))          ]
              , [Infix  (reservedOp "*"  >> return (ABinary Multiply)) AssocLeft,
@@ -170,6 +177,7 @@ operators = [  [Prefix (reservedOp "-"  >> return (Neg             ))          ]
                 Infix  (reservedOp "||" >> return (BBinary Or      )) AssocLeft]
              ]
 
+-- term :: Parser (Expr a)
 term =  parens expression
      <|> (reserved "true"  >> return (BoolConst True ))
      <|> (reserved "false" >> return (BoolConst False))
@@ -177,18 +185,19 @@ term =  parens expression
      -- <|> liftM Var identifier
      -- <|> vExpression
      <|> tExpression
-
      <|> liftM RationalConst decimalRat
      <|> rExpression
 
 
-
-rightExpression = buildExpressionParser operators rterm
+-- rightExpression = buildExpressionParser operators rterm
+        {-
 rterm = parens rightExpression
+     -- <|> (reserved "true"  >> return (BoolConst True ))
      <|> (reserved "true"  >> return (BoolConst True ))
      <|> (reserved "false" >> return (BoolConst False))
      <|> liftM RationalConst decimalRat
      <|> liftM Var identifier
+           -}
 
 tExpression = 
   try 
@@ -203,13 +212,14 @@ tExpression =
 vExpression = 
   do a1 <- (liftM Var identifier) 
      op <- relation
-     a2 <- rightExpression
+     a2 <- expression --rightExpression
      return $ RBinary op a1 a2
 
+-- rExpression :: ParsecT String () Data.Functor.Identity.Identity (Expr a)
 rExpression =
   do a1 <- expression
      op <- relation
-     a2 <- rightExpression
+     a2 <- expression --rightExpression 
      return $ RBinary op a1 a2
 
 relation =   (reservedOp ">" >> return Gt)
