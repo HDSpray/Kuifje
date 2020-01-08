@@ -64,12 +64,11 @@ data ABinOp = Add
             deriving (Show)
 
 data Stmt = Seq [Stmt] 
-          -- | forall a. Assign String (Expr a)
           | Assign String Expr
           | If Expr Stmt Stmt 
           | While Expr Stmt 
           | Skip 
           | Leak Expr
           | Vis String
-          | Echoice Stmt Stmt Expr --(Stmt Stmt Prob)
+          | Echoice Stmt Stmt Expr 
 deriving instance Show Stmt

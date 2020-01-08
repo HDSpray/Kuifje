@@ -44,6 +44,7 @@ languageDef =
                                       , "print"
                                       , "leak"
                                       , "observe"
+                                      , "|"
                                       ]
 
             , Token.reservedOpNames = ["+"
@@ -81,7 +82,7 @@ whileParser :: Parser Stmt
 whileParser = whiteSpace >> statement
 
 statement :: Parser Stmt
-statement =   sequenceOfStmt -- <|> parens statement
+statement =  sequenceOfStmt -- <|> parens statement
 
 sequenceOfStmt :: Parser Stmt
 sequenceOfStmt =
@@ -91,13 +92,13 @@ sequenceOfStmt =
 
 statement' :: Parser Stmt
 statement' =   parens statement'
-           <|> eChoiceStmt
            <|> ifStmt
            <|> whileStmt
            <|> skipStmt
            <|> assignStmt
            <|> vidStmt
            <|> leakStmt
+           <|> eChoiceStmt
 
 eChoiceStmt :: Parser Stmt
 eChoiceStmt = 
@@ -152,6 +153,7 @@ leakStmt =
 ichoiceExpr = 
   do expr <- angles expression
      expr1 <- expression
+     reserved "|"
      expr2 <- expression
      return $ Ichoice expr1 expr2 expr
 

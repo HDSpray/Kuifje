@@ -55,6 +55,17 @@ bOperator op d1 d2 =
   D $ fromListWith (+) [((Left (op x y)), p * q) | (Left x, p) <- toList $ runD d1,
                                                     (Left y, q) <- toList $ runD d2]
 
+tmpfunction :: Dist (Either Bool Rational) -> Rational -> Dist (Either Bool Rational)
+tmpfunction d p = D $ Data.Map.Strict.map (* p) (runD d)
+        -- D $ fromList [(x, q * p) | (x, p) <- toList $ runD d]
+-- tmpfunction :: Either Bool Rational -> Either Bool Rational
+
+
+concatDist :: Dist (Either Bool Rational) -> 
+              Dist (Either Bool Rational) -> 
+              Dist (Either Bool Rational)
+concatDist d1 d2 = D $ unionWith (+) (runD d1) (runD d2)
+
 
 
 evalEE :: Expr -> (Gamma ~> (Either Bool Rational))
@@ -62,25 +73,30 @@ evalEE (Var id) = \s -> case E.lookup s id of
                           Just (R r) -> (return (Right r))
                           Just (B b) -> (return (Left b))
 evalEE (RationalConst r) = \s -> return (Right r)
-evalEE (Neg r) = \s -> let r' = (evalEE r) s in 
-                           (fmap (\p -> case p of 
-                                          (Right p') -> Right (-1 * p'))) r'
+evalEE (Neg r) = \s -> 
+        let r' = (evalEE r) s in 
+            (fmap (\p -> case p of (Right p') -> Right (-1 * p'))) r'
 evalEE (ABinary op e1 e2) = \s -> 
   let e1' = (evalEE e1) s
-      e2' = (evalEE e2) s in 
-      case op of 
+      e2' = (evalEE e2) s 
+   in case op of 
         Add      -> (aOperator (+) e1' e2')
         Subtract -> (aOperator (-) e1' e2')
         Multiply -> (aOperator (*) e1' e2')
         Divide   -> (aOperator (/) e1' e2')
-{-
 evalEE (Ichoice e1 e2 p) = \s -> 
   let e1' = (evalEE e1) s
       e2' = (evalEE e2) s 
-      p'  = (evalEE p) s in 
-      case (e1', e2') of 
-        (D (Right e1''), e2') -> undefined
-    - -}
+      -- p'  = (evalEE p ) s
+      (Right p', _)  = head (toList (runD ((evalEE p) s))) 
+      d1 = D $ Data.Map.Strict.map (*p') (runD e1')
+      d2 = D $ Data.Map.Strict.map (*(1-p')) (runD e2') 
+   in D $ unionWith (+) (runD d1) (runD d2)
+   -- in D $ 
+   
+      -- TODO (evalEE p s) >>= (\(Right p') -> [runD e1' @ p', runD e2' @ 1 - p' ])
+
+
 evalEE (BoolConst b) = \s -> return (Left b)
 evalEE (Not b) = \s -> let r' = (evalEE b) s in 
                            (fmap (\bv -> case bv of 
@@ -102,98 +118,11 @@ evalEE (RBinary op e1 e2) = \s ->
         Eq ->      (cOperator (==) e1' e2')
         Ne ->      (cOperator (/=) e1' e2')
 
-                                 {-
-evalE :: Expr -> Either (Gamma ~> Bool) (Gamma ~> Rational)
-evalE (Var id) = \s -> case E.lookup s id of
-                         (R r) -> (Right $ return r)
--- evalE (Var id) = \s -> E.lookup s id
--- evalE = undefined
---
--- evalE (Var id) = \s -> case E.lookup s id of 
-                         -- (R r) -> (Right (\s -> r))
-                         -- (B b) -> (Left b)
-evalE (RationalConst r) = (Right (\s -> return r))
-evalE (Neg r) = let (Right f) = (evalE r) in 
-                    Right (\s -> (fmap ((*) (-1))) (f s)) --- TODO fix the "s"
-evalE (ABinary op e1 e2) = 
-  let (Right e1') = evalE e1 
-      (Right e2') = evalE e2 in 
-      -- let e1'' = join (e1' singlePoint)
-          -- e2'' = join (e2' singlePoint) in 
-          case op of 
-            Add      -> Right (\s -> (ariOperate (+) (e1' s) (e2' s)))
-            Subtract -> Right (\s -> (ariOperate (-) (e1' s) (e2' s)))
-            -- Subtract -> Right (\s -> (ariOperate (-) e1'' e2''))
-        {-
-evalE (Ichoice e1 e2 p) = 
-        let e1' = evalE e1
-            e2' = evalE e2
-            (Right p') = evalE p in 
-            case (e1', e2') of 
-              (Left e1'', Left e2'') -> 
-                  -}
-evalE (BoolConst b) = (Left (\s -> return b))
-evalE (Not b) = undefined
-evalE (BBinary op e1 e2) = undefined
-evalE (RBinary op e1 e2) = 
-        let (Right e1') = evalE e1
-            (Right e2') = evalE e2 in
-            -- let e1'' = join (e1' singlePoint)
-                -- e2'' = join (e2' singlePoint) in 
-                case op of 
-                  Gt -> (Left (\s -> (rCompare (>) (e1' s) (e2' s) )))
-                  -}
-
-            
-
-        --(Right (\s -> let (Right f) = (evalE r)  in f (fmap (negate) s)))
--- evalE = undefined
-
--- example = let (Right p) = (evalE (Neg (RationalConst (1 % 1)))) in 
-              -- p (uniform  [10 % 1])
               --
 exa :: Expr
--- exa = (ABinary Add (RationalConst (5%1)) (RationalConst (11%1)))
 exa = (RationalConst (5%1))
 
 example1 = let (p) = evalEE exa in p E.empty
-
-{-
-example1 = let (Right p) = (evalE ((RationalConst (1 % 1)))) in 
-              p (uniform  [10 % 1])
-              -}
-
--- example2 = fmap (fmap ((+) 1)) (return (return 1))
-
-
-        {-
-translateP :: Stmt -> (Gamma ~~> Gamma)
-translateP (Seq ls) = if length ls > 1 
-                      then translateP (head ls) ==> translateP (Seq (tail ls))
-                      else translateP (head ls) ==> return
-translateP (Assign id expr) = \ds ->
-        return (
-          case evalE expr of
-            (Right sToDr) -> ds >>= (\s -> fmap (\r -> E.add s (id, R r)) (sToDr s))
-               )
-               -}
-
-        {-
-translateKuifje :: Stmt -> Kuifje Gamma 
-translateKuifje (Seq []) = skip
-translateKuifje (Seq ls) = translateKuifje (head ls) <> translateKuifje (Seq (tail ls))
-translateKuifje (Assign id expr) = 
-        case evalE expr of 
-          (Right sToDr) -> 
-                  Language.Kuifje.Syntax.update (\s -> 
-                          fmap (\r -> E.add s (id, R r)) (sToDr s))
-          (Left sToDb) -> 
-                  Language.Kuifje.Syntax.update (\s -> 
-                          fmap (\r -> E.add s (id, B r)) (sToDb s))
-translateKuifje (Syntax.While e s) = 
-        case evalE e of
-          (Left sToDb) -> Language.Kuifje.Syntax.while sToDb (translateKuifje s)
-          -}
 
 translateKuifje :: Stmt -> Kuifje Gamma 
 translateKuifje (Seq []) = skip
@@ -214,7 +143,7 @@ translateKuifje (Syntax.If e s1 s2) =
         (translateKuifje s1) 
         (translateKuifje s2)
 translateKuifje Syntax.Skip = skip
-translateKuifje (Leak e) = undefined
+translateKuifje (Leak e) = observe (evalEE e)
 translateKuifje (Vis s) = undefined
 translateKuifje (Echoice s1 s2 p) = undefined
 
@@ -225,41 +154,30 @@ getRational g s | Just (R t) <- E.lookup g s = t
                 | otherwise = error "Not going to happen"
 
 project :: Dist (Dist Gamma) -> Dist (Dist Rational)
-project = fmap (fmap (\s -> getRational s "y"))
+project = fmap (fmap (\s -> getRational s "z"))
 
-initGamma :: Rational -> Gamma
-initGamma x = let g = E.add E.empty ("x", (R x)) in 
-               E.add g ("y", (R (0 % 1)))
+initGamma :: Rational -> Rational -> Gamma
+initGamma x y = let g = E.add E.empty ("x", (R x)) in 
+               E.add g ("y", (R y))
 
 hyper :: Dist (Dist Rational)
-hyper = let g = translateKuifje (Parse.parseString example) in 
-            project $ hysem g (uniform [initGamma x | x <- [5..8]])
+hyper = let g = translateKuifje (Parse.parseString example)
+         in project $ hysem g (uniform [initGamma x y | x <- [0..1], y <- [1..2]])
 
 example :: String
-example = "y := 0; while (x > 0) do y := x + y; x := x - 1; od;"
+-- example = "y := 0; while (x > 0) do y := x + y; x := x - 1; od;"
+--
+example = "z := x + y; leak x;"
 
--- example = "y := x + 1;"
-          
+exampelS :: Stmt
+exampelS = let (Seq ls) = parseString example 
+            in Seq $ (Assign "x" (Ichoice 
+                        (RationalConst (1 % 1)) 
+                        (RationalConst (2 % 1)) 
+                        (RationalConst (1 % 2)) )):ls
 main :: IO ()
 main = do
   putStrLn "> hyper"
   print hyper
   putStrLn "> condEntropy bayesVuln hyper"
   print $ condEntropy bayesVuln hyper
-
-        {-
-hyper :: Dist (Dist Rational)
-hyper = let (g, ve) = program E.empty (Parse.parseString example) in 
-            project $ hysem g (uniform [initGamma x | x <- [5..8]])
-
-example :: String
-example = "x := 1; y := 0; z := z + 1; while (x > 0) do y := x + y; x := x - 1; od;"
-
-
-main :: IO ()
-main = do
-  putStrLn "> hyper"
-  print hyper
-  putStrLn "> condEntropy bayesVuln hyper"
-  print $ condEntropy bayesVuln hyper
--}
