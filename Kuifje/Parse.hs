@@ -89,19 +89,27 @@ statement =
 
 statement' :: Parser Stmt
 statement' =   parens statement'
+           <|> assignStmt
            <|> ifStmt
            <|> whileStmt
            <|> skipStmt
-           <|> assignStmt
            <|> vidStmt
            <|> leakStmt
-           <|> eChoiceStmt
+           <|> brackets eChoiceStmt
 
 eChoiceStmt :: Parser Stmt
 eChoiceStmt = 
-  do expr  <- brackets expression
+  do 
+     expr  <- (whiteSpace >> expression)
+     reserved "|"
+     list <- (endBy1 statement' (reserved "|"))
+     let stmt1 = head list
+     let stmt2 = head $ tail list
+             {-
      stmt1 <- statement
+     reserved "|"
      stmt2 <- statement
+     -}
      return $ Echoice stmt1 stmt2 expr
 
 ifStmt :: Parser Stmt
@@ -162,8 +170,8 @@ decimalRat =
      let (Right n) = parse natural "" (ns ++ ms)
      return (n % (10 ^ pow10))
 
--- expression :: Parser (Expr a)
-expression = ichoiceExpr <|> buildExpressionParser operators term 
+expression :: Parser Expr
+expression = ichoiceExpr <|> buildExpressionParser operators term <?> "Can't found"
 
 -- operators :: forall a. Show a => [[Operator Char st (Expr a)]]
 operators = [  [Prefix (reservedOp "-"  >> return (Neg             ))          ]
@@ -180,23 +188,9 @@ operators = [  [Prefix (reservedOp "-"  >> return (Neg             ))          ]
 term =  parens expression
      <|> (reserved "true"  >> return (BoolConst True ))
      <|> (reserved "false" >> return (BoolConst False))
-
-     -- <|> liftM Var identifier
-     -- <|> vExpression
      <|> tExpression
      <|> liftM RationalConst decimalRat
      <|> rExpression
-
-
--- rightExpression = buildExpressionParser operators rterm
-        {-
-rterm = parens rightExpression
-     -- <|> (reserved "true"  >> return (BoolConst True ))
-     <|> (reserved "true"  >> return (BoolConst True ))
-     <|> (reserved "false" >> return (BoolConst False))
-     <|> liftM RationalConst decimalRat
-     <|> liftM Var identifier
-           -}
 
 tExpression = 
   try 
