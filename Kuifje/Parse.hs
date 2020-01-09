@@ -82,10 +82,7 @@ whileParser :: Parser Stmt
 whileParser = whiteSpace >> statement
 
 statement :: Parser Stmt
-statement =  sequenceOfStmt -- <|> parens statement
-
-sequenceOfStmt :: Parser Stmt
-sequenceOfStmt =
+statement =
   do list <- (endBy1 statement' semi)
      -- If there's only one statement return it without using Seq.
      return $ if length list == 1 then head list else Seq list

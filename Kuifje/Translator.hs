@@ -61,14 +61,16 @@ evalE (ABinary op e1 e2) = \s ->
 evalE (Ichoice e1 e2 p) = \s -> 
   let e1' = (evalE e1) s
       e2' = (evalE e2) s 
-      p'  = Data.List.foldr (\x y -> case x of (Right x', q) -> x'*q*y) 1 $ toList $ runD $ (evalE p ) s
+      p'  = Data.List.foldr (\x y -> case x of (Right x', q) -> x'*q*y) 1 
+              $ toList $ runD $ (evalE p ) s
       d1 = D $ Data.Map.Strict.map (*p') $ runD e1'
       d2 = D $ Data.Map.Strict.map (*(1-p')) $ runD e2'
    in D $ unionWith (+) (runD d1) (runD d2)
 evalE (BoolConst b) = \s -> return (Left b)
-evalE (Not b) = \s -> let r' = (evalE b) s in 
-                           (fmap (\bv -> case bv of 
-                                          (Left b') -> Left (not b'))) r'
+evalE (Not b) = \s -> 
+        let r' = (evalE b) s 
+         in (fmap (\bv -> case bv of 
+                            (Left b') -> Left (not b'))) r'
 evalE (BBinary op e1 e2) = \s -> 
   let e1' = (evalE e1) s
       e2' = (evalE e2) s in 
@@ -109,11 +111,10 @@ translateKuifje (Leak e) = observe (evalE e)
 translateKuifje (Vis s) = undefined
 translateKuifje (Echoice s1 s2 p) = 
         Language.Kuifje.Syntax.cond 
-              (\s -> let p' = (evalE (Ichoice (BoolConst True) (BoolConst False) p) s)
-                      in (fmap (\r -> case r of (Left b) -> b)) p')
-              (translateKuifje s1) 
-              (translateKuifje s2)
-
+          (\s -> let p' = (evalE (Ichoice (BoolConst True) (BoolConst False) p) s) 
+                  in (fmap (\r -> case r of (Left b) -> b)) p') 
+          (translateKuifje s1) 
+          (translateKuifje s2)
 
 getRational :: Gamma -> String -> Rational
 getRational g s | Just (R t) <- E.lookup g s = t
@@ -140,7 +141,7 @@ example1 = let (p) = evalE exa in p E.empty
 
 exampelS :: Stmt
 exampelS = let (Seq ls) = parseString example 
-            in Seq $ (Assign "x" (Ichoice 
+            in Seq $ (Assign "x" (Ichoice
                         (RationalConst (1 % 1)) 
                         (RationalConst (2 % 1)) 
                         (RationalConst (1 % 2)) )):ls
