@@ -75,7 +75,6 @@ typeCheck g (Echoice stmt1 stmt2 e) =
                         then return (g1, (Echoice stmt1 stmt2 e)) 
                         else typeError TypeMismatch
 
-
 exprCheck :: Expr -> TC Type
 exprCheck (RationalConst _) = return RationalType
 exprCheck (Neg e) = 

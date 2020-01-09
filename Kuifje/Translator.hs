@@ -88,7 +88,6 @@ evalE (RBinary op e1 e2) = \s ->
         Eq -> (cOperator (==) e1' e2')
         Ne -> (cOperator (/=) e1' e2')
 
-
 translateKuifje :: Stmt -> Kuifje Gamma 
 translateKuifje (Seq []) = skip
 translateKuifje (Seq ls) = translateKuifje (head ls) <> translateKuifje (Seq (tail ls))
@@ -134,11 +133,6 @@ hyper = let g = translateKuifje exampelS --(Parse.parseString example)
 example :: String
 example = "y := 0; while (x > 0) do y := x + y; x := x - 1; od;"
 
-exa :: Expr
-exa = (RationalConst (5%1))
-example1 = let (p) = evalE exa in p E.empty
--- example = "z := x + y; leak x;"
-
 exampelS :: Stmt
 exampelS = let (Seq ls) = parseString example 
             in Seq $ (Assign "x" (Ichoice
@@ -151,3 +145,4 @@ main = do
   print hyper
   putStrLn "> condEntropy bayesVuln hyper"
   print $ condEntropy bayesVuln hyper
+

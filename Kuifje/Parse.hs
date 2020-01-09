@@ -154,7 +154,7 @@ leakStmt =
      expr <- expression
      return $ Leak expr
 
--- ichoiceExpr :: Parser (Expr a)
+ichoiceExpr :: Parser Expr
 ichoiceExpr = 
   do {-expr <- angles expression
      expr1 <- expression
@@ -194,7 +194,7 @@ operators = [  [Prefix (reservedOp "-"  >> return (Neg             ))          ]
                 Infix  (reservedOp "||" >> return (BBinary Or      )) AssocLeft]
              ]
 
--- term :: Parser (Expr a)
+term :: Parser Expr
 term =  parens expression
      <|> (reserved "true"  >> return (BoolConst True ))
      <|> (reserved "false" >> return (BoolConst False))
@@ -215,14 +215,13 @@ tExpression =
 vExpression = 
   do a1 <- (liftM Var identifier) 
      op <- relation
-     a2 <- expression --rightExpression
+     a2 <- expression 
      return $ RBinary op a1 a2
 
--- rExpression :: ParsecT String () Data.Functor.Identity.Identity (Expr a)
 rExpression =
   do a1 <- expression
      op <- relation
-     a2 <- expression --rightExpression 
+     a2 <- expression 
      return $ RBinary op a1 a2
 
 relation =   (reservedOp ">" >> return Gt)

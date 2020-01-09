@@ -22,26 +22,6 @@ data RBinOp = Gt
 data ExprTy = EBool | ERational
         deriving (Show)
 
-        {-
-data Expr (a :: ExprTy) where
-  Var :: String -> Expr a
-  RationalConst :: Rational -> Expr ERational
-  Neg :: Expr ERational -> Expr ERational
-  ABinary :: ABinOp -> Expr EBool -> Expr EBool -> Expr EBool
-  Ichoice :: Expr a -> Expr a -> Expr ERational -> Expr a
-  BoolConst :: Bool -> Expr EBool
-  Not :: Expr EBool -> Expr EBool
-  BBinary :: BBinOp -> Expr EBool -> Expr EBool -> Expr EBool
-  RBinary :: RBinOp -> Expr ERational -> Expr ERational -> Expr EBool
-deriving instance Show (Expr a)
-
-
--- evalExpr :: Expr a -> (s -> D a)
--- evalExpr = undefined
--- -}
-
-
-
 data Expr = Var String 
           | RationalConst Rational
           | Neg Expr 
