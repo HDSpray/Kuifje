@@ -156,10 +156,20 @@ leakStmt =
 
 -- ichoiceExpr :: Parser (Expr a)
 ichoiceExpr = 
-  do expr <- angles expression
+  do {-expr <- angles expression
      expr1 <- expression
      reserved "|"
      expr2 <- expression
+     list <- (sepBy1 expression (reserved "|"))
+     let expr1 = head list
+     let expr2 = head list
+     let expr = head list
+     -}
+     expr1 <- expression 
+     reserved "|"
+     expr2 <- expression
+     reserved "|"
+     expr <- expression
      return $ Ichoice expr1 expr2 expr
 
 -- decimalRat :: Monad m => ParsecT String u m Rational
@@ -171,7 +181,7 @@ decimalRat =
      return (n % (10 ^ pow10))
 
 expression :: Parser Expr
-expression = ichoiceExpr <|> buildExpressionParser operators term <?> "Can't found"
+expression = (angles ichoiceExpr) <|> buildExpressionParser operators term <?> "Can't found"
 
 -- operators :: forall a. Show a => [[Operator Char st (Expr a)]]
 operators = [  [Prefix (reservedOp "-"  >> return (Neg             ))          ]
