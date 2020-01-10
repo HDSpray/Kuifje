@@ -45,6 +45,8 @@ languageDef =
                                       , "leak"
                                       , "observe"
                                       , "|"
+                                      , ","
+                                      , "@"
                                       ]
 
             , Token.reservedOpNames = ["+"
@@ -74,6 +76,7 @@ parens     = Token.parens     lexer -- parses surrounding parenthesis:
                                     -- uses p to parse what's inside them
 brackets   = Token.brackets   lexer -- exterior choice
 angles     = Token.angles     lexer -- interior choice
+braces     = Token.braces     lexer 
 semi       = Token.semi       lexer -- parses a semicolon
 whiteSpace = Token.whiteSpace lexer -- parses whitespace
 natural    = Token.natural    lexer
@@ -87,8 +90,39 @@ statement =
      -- If there's only one statement return it without using Seq.
      return $ if length list == 1 then head list else Seq list
 
+
+
+stmtTmp :: Parser Stmt
+stmtTmp = buildExpressionParser sOperators statement'
+         <?> "Can't found"
+
+sOperators = [[Infix (do whiteSpace
+                         reservedOp "["
+                         expr <- expression
+                         reservedOp "]"
+                         return $ \ x y -> (Echoice x y expr)
+                     ) AssocLeft
+               ]
+            ]
+
 statement' :: Parser Stmt
-statement' =   parens statement'
+statement' = buildExpressionParser sOperators sTerm
+
+sTerm :: Parser Stmt
+sTerm =   parens statement'
+           <|> brackets statement
+           -- <|> stmtTmp
+           <|> assignStmt
+           <|> ifStmt
+           <|> whileStmt
+           <|> skipStmt
+           <|> vidStmt
+           <|> leakStmt
+           -- <|> brackets eChoiceStmt
+
+        {-
+statement' :: Parser Stmt
+statement' = parens statement'
            <|> assignStmt
            <|> ifStmt
            <|> whileStmt
@@ -96,6 +130,11 @@ statement' =   parens statement'
            <|> vidStmt
            <|> leakStmt
            <|> brackets eChoiceStmt
+eChoiceStmt' :: Parser Stmt
+eChoiceStmt' = 
+        do list <- ()
+-}
+
 
 eChoiceStmt :: Parser Stmt
 eChoiceStmt = 
@@ -105,11 +144,6 @@ eChoiceStmt =
      list <- (endBy1 statement' (reserved "|"))
      let stmt1 = head list
      let stmt2 = head $ tail list
-             {-
-     stmt1 <- statement
-     reserved "|"
-     stmt2 <- statement
-     -}
      return $ Echoice stmt1 stmt2 expr
 
 ifStmt :: Parser Stmt
@@ -172,6 +206,21 @@ ichoiceExpr =
      expr <- expression
      return $ Ichoice expr1 expr2 expr
 
+        {-
+probExpr = Parser (Expr, Expr)
+probExpr = do list <- (sepBy1 expression (reserved "@"))
+              return $ (head list, head (tail list))
+ichoiceExpr' :: Parser Expr
+ichoiceExpr' =
+        do list <- (sepBy1 probExpr (reserved ","))
+
+
+addList ls = if length ls == 1 
+                then fst (head ls)
+                else Ichoice (head ls) (addList (tail ls))
+                -}
+
+
 -- decimalRat :: Monad m => ParsecT String u m Rational
 decimalRat = 
   do ns <- many digit
@@ -181,7 +230,13 @@ decimalRat =
      return (n % (10 ^ pow10))
 
 expression :: Parser Expr
-expression = (angles ichoiceExpr) <|> buildExpressionParser operators term <?> "Can't found"
+expression = whiteSpace >> expression'
+
+expression':: Parser Expr
+expression' = (angles ichoiceExpr) 
+         -- <|> (brackets ichoiceExpr') 
+         <|> buildExpressionParser operators term 
+         <?> "Can't found"
 
 -- operators :: forall a. Show a => [[Operator Char st (Expr a)]]
 operators = [  [Prefix (reservedOp "-"  >> return (Neg             ))          ]
@@ -192,15 +247,22 @@ operators = [  [Prefix (reservedOp "-"  >> return (Neg             ))          ]
                 Infix  (reservedOp "-"  >> return (ABinary Subtract)) AssocLeft]
              , [Infix  (reservedOp "&&" >> return (BBinary And     )) AssocLeft,
                 Infix  (reservedOp "||" >> return (BBinary Or      )) AssocLeft]
+             , [Infix (do whiteSpace
+                          reservedOp "<"
+                          expr <- expression
+                          reservedOp ">"
+                          return $ \ x y -> ( Ichoice x y expr)
+                      ) AssocLeft
+               ]
              ]
 
 term :: Parser Expr
-term =  parens expression
-     <|> (reserved "true"  >> return (BoolConst True ))
-     <|> (reserved "false" >> return (BoolConst False))
-     <|> tExpression
-     <|> liftM RationalConst decimalRat
-     <|> rExpression
+term = parens expression
+   <|> (reserved "true"  >> return (BoolConst True ))
+   <|> (reserved "false" >> return (BoolConst False))
+   <|> tExpression
+   <|> liftM RationalConst decimalRat
+   <|> rExpression
 
 tExpression = 
   try 
