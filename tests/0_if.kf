@@ -1,5 +1,5 @@
 if true then 
-        x := 2+1; 
+        x := 2 + 1; 
 else 
         x := 1; 
 fi;

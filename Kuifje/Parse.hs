@@ -239,22 +239,44 @@ expression' = (angles ichoiceExpr)
          <?> "Can't found"
 
 -- operators :: forall a. Show a => [[Operator Char st (Expr a)]]
-operators = [  [Prefix (reservedOp "-"  >> return (Neg             ))          ]
-             , [Prefix (reservedOp "~"  >> return (Not             ))          ]
-             , [Infix  (reservedOp "*"  >> return (ABinary Multiply)) AssocLeft,
-                Infix  (reservedOp "/"  >> return (ABinary Divide  )) AssocLeft,
-                Infix  (reservedOp "+"  >> return (ABinary Add     )) AssocLeft,
-                Infix  (reservedOp "-"  >> return (ABinary Subtract)) AssocLeft]
-             , [Infix  (reservedOp "&&" >> return (BBinary And     )) AssocLeft,
-                Infix  (reservedOp "||" >> return (BBinary Or      )) AssocLeft]
-             , [Infix (do whiteSpace
-                          reservedOp "<"
-                          expr <- expression
-                          reservedOp ">"
-                          return $ \ x y -> ( Ichoice x y expr)
-                      ) AssocLeft
+
+reservedOpW op r = try (whiteSpace >> reservedOp op) >> return r
+
+ichoseOp = do whiteSpace
+              reservedOp "<"
+              expr <- expression
+              reservedOp ">"
+              return $ \ x y -> ( Ichoice x y expr)
+operators = 
+        [[Prefix (reservedOpW "-"  (Neg             ))]
+       , [Prefix (reservedOpW "~"  (Not             ))]
+       , [Infix  (reservedOpW "*"  (ABinary Multiply)) AssocLeft,
+          Infix  (reservedOpW "/"  (ABinary Divide  )) AssocLeft,
+          Infix  (reservedOpW "+"  (ABinary Add     )) AssocLeft,
+          Infix  (reservedOpW "-"  (ABinary Subtract)) AssocLeft]
+       , [Infix  (reservedOpW "&&" (BBinary And     )) AssocLeft,
+          Infix  (reservedOpW "||" (BBinary Or      )) AssocLeft]
+       , [Infix  (ichoseOp) AssocLeft ]]
+
+        {-
+operators = 
+        [[Prefix (reservedOp "-"  >> return (Neg             ))]
+       , [Prefix (reservedOp "~"  >> return (Not             ))]
+       , [Infix  (reservedOp "*"  >> return (ABinary Multiply)) AssocLeft,
+          Infix  (reservedOp "/"  >> return (ABinary Divide  )) AssocLeft,
+          Infix  (reservedOp "+"  >> return (ABinary Add     )) AssocLeft,
+          Infix  (reservedOp "-"  >> return (ABinary Subtract)) AssocLeft]
+       , [Infix  (reservedOp "&&" >> return (BBinary And     )) AssocLeft,
+          Infix  (reservedOp "||" >> return (BBinary Or      )) AssocLeft]
+       , [Infix (do whiteSpace
+                    reservedOp "<" 
+                    expr <- expression
+                    reservedOp ">"
+                    return $ \ x y -> ( Ichoice x y expr)
+                ) AssocLeft
                ]
-             ]
+        ]
+        -}
 
 term :: Parser Expr
 term = parens expression
