@@ -99,7 +99,10 @@ translateKuifje (Assign id expr) = Language.Kuifje.Syntax.update (\s ->
 translateKuifje (Syntax.While e s) = 
         Language.Kuifje.Syntax.while (\s -> 
                 let currS = (evalE e) s in 
-                    fmap (\r -> case r of (Left b) -> b) currS) (translateKuifje s)
+                    fmap (\r -> case r of 
+                                  (Left b) -> b
+                                  (Right r) -> error "Condition must be bool")
+                                        currS) (translateKuifje s)
 translateKuifje (Syntax.If e s1 s2) = 
         Language.Kuifje.Syntax.cond 
           (\s -> let currS = (evalE e) s in fmap (\r -> case r of (Left b) -> b) currS) 

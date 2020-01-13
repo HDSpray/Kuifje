@@ -90,8 +90,6 @@ statement =
      -- If there's only one statement return it without using Seq.
      return $ if length list == 1 then head list else Seq list
 
-
-
 stmtTmp :: Parser Stmt
 stmtTmp = buildExpressionParser sOperators statement'
          <?> "Can't found"
@@ -109,37 +107,19 @@ statement' :: Parser Stmt
 statement' = buildExpressionParser sOperators sTerm
 
 sTerm :: Parser Stmt
-sTerm =   parens statement'
-           <|> brackets statement
-           -- <|> stmtTmp
-           <|> assignStmt
-           <|> ifStmt
-           <|> whileStmt
-           <|> skipStmt
-           <|> vidStmt
-           <|> leakStmt
-           -- <|> brackets eChoiceStmt
-
-        {-
-statement' :: Parser Stmt
-statement' = parens statement'
-           <|> assignStmt
-           <|> ifStmt
-           <|> whileStmt
-           <|> skipStmt
-           <|> vidStmt
-           <|> leakStmt
-           <|> brackets eChoiceStmt
-eChoiceStmt' :: Parser Stmt
-eChoiceStmt' = 
-        do list <- ()
--}
-
+sTerm = parens statement'
+    <|> brackets statement
+    <|> braces statement
+    <|> assignStmt
+    <|> ifStmt
+    <|> whileStmt
+    <|> skipStmt
+    <|> vidStmt
+    <|> leakStmt
 
 eChoiceStmt :: Parser Stmt
 eChoiceStmt = 
-  do 
-     expr  <- (whiteSpace >> expression)
+  do expr  <- (whiteSpace >> expression)
      reserved "|"
      list <- (endBy1 statement' (reserved "|"))
      let stmt1 = head list
