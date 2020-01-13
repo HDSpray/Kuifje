@@ -4,6 +4,7 @@ module PrettyPrint where
 import Data.List (transpose)
 import Text.PrettyPrint.Boxes
 import qualified Data.Map.Strict as HM (mapWithKey, elems)
+-- import qualified Data.Set.Strict as Set
 import Data.Ratio
 import qualified Env as E
 

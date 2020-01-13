@@ -4,6 +4,7 @@ module Env ( Env(..)
                  , lookup
                  , add
                  , addAll
+                 , allVar
                  ) where
 
 import qualified Data.Map as M
@@ -26,3 +27,6 @@ add (Env env) (key,elt) = Env (M.insert key elt env)
 
 addAll :: Env e -> [(String,e)] -> Env e
 addAll (Env env) pairs = Env $ foldr (\(k,e) g -> M.insert k e g) env pairs
+
+allVar :: Env e -> [String]
+allVar (Env env) = [ s | (s, _) <- M.toList env]

@@ -75,8 +75,8 @@ evalE (BBinary op e1 e2) = \s ->
   let e1' = (evalE e1) s
       e2' = (evalE e2) s in 
       case op of 
-        And ->      (bOperator (&&) e1' e2')
-        Or  ->      (bOperator (||) e1' e2')
+        And -> (bOperator (&&) e1' e2')
+        Or  -> (bOperator (||) e1' e2')
 evalE (RBinary op e1 e2) = \s -> 
   let e1' = (evalE e1) s
       e2' = (evalE e2) s in 
@@ -136,9 +136,10 @@ example = "y := 0; while (x > 0) do y := x + y; x := x - 1; od;"
 exampelS :: Stmt
 exampelS = let (Seq ls) = parseString example 
             in Seq $ (Assign "x" (Ichoice
-                        (RationalConst (1 % 1)) 
-                        (RationalConst (2 % 1)) 
+                        (RationalConst (5 % 1)) 
+                        (RationalConst (6 % 1)) 
                         (RationalConst (1 % 2)) )):ls
+
 main :: IO ()
 main = do
   putStrLn "> hyper"

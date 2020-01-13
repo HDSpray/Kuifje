@@ -109,15 +109,15 @@ statement' :: Parser Stmt
 statement' = buildExpressionParser sOperators sTerm
 
 sTerm :: Parser Stmt
-sTerm =   parens statement'
-           <|> brackets statement
-           -- <|> stmtTmp
-           <|> assignStmt
-           <|> ifStmt
-           <|> whileStmt
-           <|> skipStmt
-           <|> vidStmt
-           <|> leakStmt
+sTerm = parens statement'
+    <|> brackets statement
+    <|> braces statement
+    <|> assignStmt
+    <|> ifStmt
+    <|> whileStmt
+    <|> skipStmt
+    <|> vidStmt
+    <|> leakStmt
            -- <|> brackets eChoiceStmt
 
         {-
