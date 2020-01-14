@@ -33,6 +33,8 @@ data Expr = Var String
           | Not Expr 
           | BBinary BBinOp Expr Expr 
           | RBinary RBinOp Expr Expr 
+
+          -- Extension
           | ExprIf Expr Expr Expr
           deriving (Show)
 

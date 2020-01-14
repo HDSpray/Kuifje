@@ -35,12 +35,11 @@ aOperator op d1 d2 =
   D $ fromListWith (+) [((Right (op x y)), p * q) | (Right x, p) <- toList $ runD d1,
                                                     (Right y, q) <- toList $ runD d2]
 cOperator op d1 d2 = 
-  D $ fromListWith (+) [((Left (op x y)), p * q) | (Right x, p) <- toList $ runD d1,
-                                                   (Right y, q) <- toList $ runD d2]
+  D $ fromListWith (+) [((Left (op x y)), p * q)  | (Right x, p) <- toList $ runD d1,
+                                                    (Right y, q) <- toList $ runD d2]
 bOperator op d1 d2 = 
-  D $ fromListWith (+) [((Left (op x y)), p * q) | (Left x, p) <- toList $ runD d1,
-                                                   (Left y, q) <- toList $ runD d2]
-
+  D $ fromListWith (+) [((Left (op x y)), p * q)  | (Left x, p) <- toList $ runD d1,
+                                                    (Left y, q) <- toList $ runD d2]
 
 evalE :: Expr -> (Gamma ~> (Either Bool Rational))
 evalE (Var id) = \s -> case E.lookup s id of 
@@ -50,6 +49,17 @@ evalE (RationalConst r) = \s -> return (Right r)
 evalE (Neg r) = \s -> 
         let r' = (evalE r) s in 
             (fmap (\p -> case p of (Right p') -> Right (-1 * p'))) r'
+evalE (ExprIf cond e1 e2) = \s -> 
+        let cond' = runD $ (evalE cond) s
+            e1' = (evalE e1) s
+            e2' = (evalE e2) s 
+            d1 = case Data.Map.Strict.lookup (Left True) cond' of 
+                   (Just p)  -> D $ Data.Map.Strict.map (*p) $ runD e1'
+                   otherwise -> D $ Data.Map.Strict.empty
+            d2 = case Data.Map.Strict.lookup (Left False) cond' of 
+                   (Just p)  -> D $ Data.Map.Strict.map (*p) $ runD e2'
+                   otherwise -> D $ Data.Map.Strict.empty
+         in D $ unionWith (+) (runD d1) (runD d2)
 evalE (ABinary op e1 e2) = \s -> 
   let e1' = (evalE e1) s
       e2' = (evalE e2) s 
