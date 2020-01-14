@@ -1,0 +1,5 @@
+// Can only pase, can not eavl yet
+x := set {1, 2, 3};
+y := set {True, False};
+x := set {1, 2, 4};
+z := set {x, y};

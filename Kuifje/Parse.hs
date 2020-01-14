@@ -208,92 +208,64 @@ ichoiceExpr =
      expr <- expression
      return $ Ichoice expr1 expr2 expr
 
-        {-
-probExpr = Parser (Expr, Expr)
-probExpr = do list <- (sepBy1 expression (reserved "@"))
-              return $ (head list, head (tail list))
-ichoiceExpr' :: Parser Expr
-ichoiceExpr' =
-        do list <- (sepBy1 probExpr (reserved ","))
-
-
-addList ls = if length ls == 1 
-                then fst (head ls)
-                else Ichoice (head ls) (addList (tail ls))
-                -}
-
-
 -- decimalRat :: Monad m => ParsecT String u m Rational
 decimalRat = 
-  do ns <- many digit
+  do ns <- many1 digit
      ms <- (char '.' >> many digit) <|> return []
      let pow10 = toInteger $ length ms
      let (Right n) = parse natural "" (ns ++ ms)
      return (n % (10 ^ pow10))
 
 expression :: Parser Expr
-expression = whiteSpace >> expression'
+expression = expression'-- whiteSpace >> expression'
 
 expression':: Parser Expr
 expression' = 
-        -- (angles ichoiceExpr) 
-         (parens expression) 
-         <|> buildExpressionParser operators term 
-         <?> "Can't found"
+         -- (angles ichoiceExpr) 
+         -- (parens expression) 
+         buildExpressionParser operators term 
+         <?> "Can't find: expression"
 
 -- operators :: forall a. Show a => [[Operator Char st (Expr a)]]
 
 reservedOpW op r = try (whiteSpace >> reservedOp op) >> return r
 
 ichoseOp = do whiteSpace
-              reservedOp "<"
+              reservedOp "["
               expr <- expression
-              reservedOp ">"
+              reservedOp "]"
               return $ \ x y -> ( Ichoice x y expr)
 operators = 
-        [[Prefix (reservedOpW "-"  (Neg             ))]
-       , [Prefix (reservedOpW "~"  (Not             ))]
-       , [Infix  (reservedOpW "*"  (ABinary Multiply)) AssocLeft,
-          Infix  (reservedOpW "/"  (ABinary Divide  )) AssocLeft,
-          Infix  (reservedOpW "+"  (ABinary Add     )) AssocLeft,
-          Infix  (reservedOpW "-"  (ABinary Subtract)) AssocLeft]
-       , [Infix  (reservedOpW "&&" (BBinary And     )) AssocLeft,
-          Infix  (reservedOpW "||" (BBinary Or      )) AssocLeft]
-       , [Infix  (ichoseOp) AssocLeft ]]
-
-        {-
-operators = 
-        [[Prefix (reservedOp "-"  >> return (Neg             ))]
-       , [Prefix (reservedOp "~"  >> return (Not             ))]
-       , [Infix  (reservedOp "*"  >> return (ABinary Multiply)) AssocLeft,
-          Infix  (reservedOp "/"  >> return (ABinary Divide  )) AssocLeft,
-          Infix  (reservedOp "+"  >> return (ABinary Add     )) AssocLeft,
-          Infix  (reservedOp "-"  >> return (ABinary Subtract)) AssocLeft]
-       , [Infix  (reservedOp "&&" >> return (BBinary And     )) AssocLeft,
-          Infix  (reservedOp "||" >> return (BBinary Or      )) AssocLeft]
-       , [Infix (do whiteSpace
-                    reservedOp "<" 
-                    expr <- expression
-                    reservedOp ">"
-                    return $ \ x y -> ( Ichoice x y expr)
-                ) AssocLeft
-               ]
+        [ [Prefix (reservedOpW "-"  (Neg             ))]
+        , [Prefix (reservedOpW "~"  (Not             ))]
+        , [Infix  (reservedOpW "*"  (ABinary Multiply)) AssocLeft,
+           Infix  (reservedOpW "/"  (ABinary Divide  )) AssocLeft,
+           Infix  (reservedOpW "+"  (ABinary Add     )) AssocLeft,
+           Infix  (reservedOpW "-"  (ABinary Subtract)) AssocLeft]
+        , [Infix  (reservedOpW "&&" (BBinary And     )) AssocLeft,
+           Infix  (reservedOpW "||" (BBinary Or      )) AssocLeft]
+        , [Infix  (try ichoseOp)                        AssocLeft]
+        , [Infix  (reservedOpW ">"  (RBinary Gt      )) AssocLeft] 
+        , [Infix  (reservedOpW "<"  (RBinary Lt      )) AssocLeft] 
+        , [Infix  (reservedOpW ">=" (RBinary Ge      )) AssocLeft] 
+        , [Infix  (reservedOpW "<=" (RBinary Le      )) AssocLeft] 
+        , [Infix  (reservedOpW "==" (RBinary Eq      )) AssocLeft] 
         ]
-        -}
 
 term :: Parser Expr
-term = parens expression
-   <|> (reserved "true"  >> return (BoolConst True ))
-   <|> (reserved "false" >> return (BoolConst False))
-   <|> ifExpr
+term = whiteSpace >> (parens expression
+   <|> (reserved "true"  >> return (BoolConst True ) <?> "fail: true")
+   <|> (reserved "false" >> return (BoolConst False) <?> "fail: false")
+   <|> (ifExpr <?> "parse fail: if-expr")
+   <|> (liftM RationalConst (try decimalRat) <?> "fail: rat")
    <|> setExpr
+   <|> liftM Var identifier
+   <?> "parse fail: term")
    -- <|> tmpExpr
-   <|> tExpression
-   <|> liftM RationalConst decimalRat
-   <|> rExpression
+   -- <|> tExpression
+   -- <|> rExpression
 
-ifExpr = do 
-            reserved "if"
+ifExpr = do reserved "if"
             cond <- expression
             reserved "then"
             expr1 <- expression
@@ -305,7 +277,9 @@ setValue = do list <- (sepBy1 expression (reserved ","))
               return list
 
 setExpr = do reserved "set"
-             list <- (sepBy1 expression (reserved ","))
+             reservedOp "{"
+             list <- (sepBy1 expression' (reserved ","))
+             reservedOp "}"
              let values = fromList list
              return $ Eset values
 
