@@ -233,8 +233,9 @@ expression :: Parser Expr
 expression = whiteSpace >> expression'
 
 expression':: Parser Expr
-expression' = (angles ichoiceExpr) 
-         -- <|> (brackets ichoiceExpr') 
+expression' = 
+        -- (angles ichoiceExpr) 
+         (parens expression) 
          <|> buildExpressionParser operators term 
          <?> "Can't found"
 
@@ -282,9 +283,27 @@ term :: Parser Expr
 term = parens expression
    <|> (reserved "true"  >> return (BoolConst True ))
    <|> (reserved "false" >> return (BoolConst False))
+   <|> ifExpr
+   -- <|> tmpExpr
    <|> tExpression
    <|> liftM RationalConst decimalRat
    <|> rExpression
+
+ifExpr = do 
+            reserved "if"
+            cond <- expression
+            reserved "then"
+            expr1 <- expression
+            reserved "else"
+            expr2 <- expression
+            return $ ExprIf cond expr1 expr2
+
+tmpExpr = 
+        (do a1 <- (liftM RationalConst decimalRat)
+            whiteSpace
+            op <- relation
+            a2 <- expression
+            return $ RBinary op a1 a2)
 
 tExpression = 
   try 
@@ -293,8 +312,8 @@ tExpression =
       a2 <- expression
       return $ RBinary op a1 a2)
   <|>
-  do a1 <- (liftM Var identifier)
-     return a1
+  (do a1 <- (liftM Var identifier)
+      return a1)
 
 vExpression = 
   do a1 <- (liftM Var identifier) 
