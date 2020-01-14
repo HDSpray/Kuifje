@@ -7,9 +7,13 @@
 
 module Syntax where
 
+import Data.Set
+
+newtype ExprSet = Set Expr deriving (Show)
+
 data BBinOp = And 
             | Or 
-            deriving (Show)
+            deriving (Show, Ord, Eq)
 
 data RBinOp = Gt 
             | Ge
@@ -17,7 +21,7 @@ data RBinOp = Gt
             | Le
             | Eq
             | Ne
-            deriving (Show)
+            deriving (Show, Ord, Eq)
 
 data ExprTy = EBool | ERational
         deriving (Show)
@@ -36,7 +40,8 @@ data Expr = Var String
 
           -- Extension
           | ExprIf Expr Expr Expr
-          deriving (Show)
+          | Eset (Set Expr)
+          deriving (Show, Eq, Ord)
 
 
 data ABinOp = Add 
@@ -44,7 +49,7 @@ data ABinOp = Add
             | Multiply 
             | Divide 
             -- | Rem
-            deriving (Show)
+            deriving (Show, Ord, Eq)
 
 data Stmt = Seq [Stmt] 
           | Assign String Expr

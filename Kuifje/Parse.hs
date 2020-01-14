@@ -11,6 +11,7 @@ import Syntax
 import Prelude
 import System.IO 
 import Data.Ratio
+import Data.Set
 import Control.Monad
 import Text.ParserCombinators.Parsec
 import Text.Parsec.Char
@@ -33,6 +34,7 @@ languageDef =
                                       , "while"
                                       , "do"
                                       , "od"
+                                      , "set"
                                       , "skip"
                                       , "true"
                                       , "false"
@@ -284,6 +286,7 @@ term = parens expression
    <|> (reserved "true"  >> return (BoolConst True ))
    <|> (reserved "false" >> return (BoolConst False))
    <|> ifExpr
+   <|> setExpr
    -- <|> tmpExpr
    <|> tExpression
    <|> liftM RationalConst decimalRat
@@ -297,6 +300,14 @@ ifExpr = do
             reserved "else"
             expr2 <- expression
             return $ ExprIf cond expr1 expr2
+
+setValue = do list <- (sepBy1 expression (reserved ","))
+              return list
+
+setExpr = do reserved "set"
+             list <- (sepBy1 expression (reserved ","))
+             let values = fromList list
+             return $ Eset values
 
 tmpExpr = 
         (do a1 <- (liftM RationalConst decimalRat)
