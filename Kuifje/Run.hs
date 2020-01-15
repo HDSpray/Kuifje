@@ -11,16 +11,25 @@ import Language.Kuifje.Semantics
 import Language.Kuifje.Syntax
 import Data.Map.Strict
 import Data.List
+-- import qualified Data.Set as DSET
 import Parse
 import Syntax
 
 
 
+        {-
 getFrom g s | Just (B b) <- E.lookup g s = (Left b)
             | Just (R r) <- E.lookup g s = (Right r)
             | otherwise = error ("Not going to happend " ++ s)
+            -}
+getFrom g s | Just x <- E.lookup g s = x
+            | otherwise = error ("Not going to happend " ++ s)
+            
 
-project :: String -> Dist (Dist Gamma) -> Dist (Dist (Either Bool Rational))
+-- project :: String -> Dist (Dist Gamma) -> Dist (Dist (Either Bool Rational))
+-- project var = fmap (fmap (\s -> getFrom s var))
+
+project :: String -> Dist (Dist Gamma) -> Dist (Dist Value)
 project var = fmap (fmap (\s -> getFrom s var))
 
 runHyper s = do tmp <- parseFile s

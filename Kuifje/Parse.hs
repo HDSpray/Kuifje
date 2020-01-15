@@ -7,7 +7,6 @@ module Parse where
 
 
 import Syntax
-
 import Prelude
 import System.IO 
 import Data.Ratio
@@ -20,6 +19,10 @@ import Text.ParserCombinators.Parsec.Expr
 import Text.ParserCombinators.Parsec.Language
 import qualified Text.ParserCombinators.Parsec.Token as Token
 import Data.Functor.Identity
+
+--
+-- Parsec Language Setup
+--
 
 languageDef =
    emptyDef { Token.commentStart    = "/*"
@@ -47,7 +50,6 @@ languageDef =
                                       , "leak"
                                       , "observe"
                                       , "|"
-                                      , ","
                                       , "@"
                                       ]
 
@@ -82,80 +84,76 @@ braces     = Token.braces     lexer
 semi       = Token.semi       lexer -- parses a semicolon
 whiteSpace = Token.whiteSpace lexer -- parses whitespace
 natural    = Token.natural    lexer
+symbol     = Token.symbol     lexer
 
-whileParser :: Parser Stmt
-whileParser = whiteSpace >> statement
+--
+-- Generic
+--
+
+s << t = do { x <- s;  t; return x }
+
+decimalRat :: Parser Rational
+decimalRat = 
+  do ns <- many1 digit
+     ms <- try (char '.' >> many digit) <|> return [] let pow10 = toInteger $ length ms
+     let (Right n) = parse natural "" (ns ++ ms)
+     return (n % (10 ^ pow10))
+
+kChoice :: (a -> a -> Expr -> a) -> Parser (a -> a -> a)
+kChoice c =
+      do symbol "["
+         expr <- expression
+         symbol "]"
+         return $ \x y -> c x y expr  -- TODO reorder this
+
+--
+-- Statements
+--
+
+statements :: Parser Stmt
+statements =
+  do whiteSpace
+     list <- sepEndBy statement (semi >> whiteSpace)
+     return $ case list of
+               [] -> Skip     -- the empty program is skip
+               [s] -> s       -- a single statement is just itself
+               ps -> Seq ps   -- multiple statements are sequenced
 
 statement :: Parser Stmt
-statement =
-  do list <- (endBy1 statement' semi)
-     -- If there's only one statement return it without using Seq.
-     return $ if length list == 1 then head list else Seq list
+statement = buildExpressionParser sOperators sTerm
 
 
-
-stmtTmp :: Parser Stmt
-stmtTmp = buildExpressionParser sOperators statement'
-         <?> "Can't found"
-
-sOperators = [[Infix (do whiteSpace
-                         reservedOp "["
-                         expr <- expression
-                         reservedOp "]"
-                         return $ \ x y -> (Echoice x y expr)
-                     ) AssocLeft
-               ]
-            ]
-
-statement' :: Parser Stmt
-statement' = buildExpressionParser sOperators sTerm
+sOperators =
+   [[Infix (kChoice Echoice) AssocLeft]]
 
 sTerm :: Parser Stmt
-sTerm = parens statement'
-    <|> brackets statement
-    <|> braces statement
-    <|> assignStmt
-    <|> ifStmt
-    <|> whileStmt
-    <|> skipStmt
-    <|> vidStmt
-    <|> leakStmt
-           -- <|> brackets eChoiceStmt
+sTerm = (braces statements
+         <|> assignStmt
+         <|> ifStmt
+         <|> whileStmt
+         <|> skipStmt
+         <|> vidStmt
+         <|> leakStmt) << whiteSpace
+--    <|> brackets eChoiceStmt
 
-        {-
-statement' :: Parser Stmt
-statement' = parens statement'
-           <|> assignStmt
-           <|> ifStmt
-           <|> whileStmt
-           <|> skipStmt
-           <|> vidStmt
-           <|> leakStmt
-           <|> brackets eChoiceStmt
-eChoiceStmt' :: Parser Stmt
-eChoiceStmt' = 
-        do list <- ()
--}
-
-
-eChoiceStmt :: Parser Stmt
-eChoiceStmt = 
-  do 
-     expr  <- (whiteSpace >> expression)
-     reserved "|"
-     list <- (endBy1 statement' (reserved "|"))
-     let stmt1 = head list
-     let stmt2 = head $ tail list
-     return $ Echoice stmt1 stmt2 expr
+-- eChoiceStmt :: Parser Stmt
+-- eChoiceStmt = 
+--   do 
+--      expr  <- (whiteSpace >> expression)
+--      reserved "|"
+--      list <- (endBy1 statement (reserved "|"))
+--      let stmt1 = head list
+--      let stmt2 = head $ tail list
+--      return $ Echoice stmt1 stmt2 expr
 
 ifStmt :: Parser Stmt
 ifStmt =
   do reserved "if"
      cond  <- expression
      reserved "then"
-     stmt1 <- statement
+     stmt1 <- statements
      reserved "else"
-     stmt2 <- statement
+     stmt2 <- statements
      reserved "fi"
      return $ If cond stmt1 stmt2
 
@@ -164,7 +162,7 @@ whileStmt =
   do reserved "while"
      cond <- expression
      reserved "do"
-     stmt <- statement
+     stmt <- statements
      reserved "od"
      return $ While cond stmt
 
@@ -190,144 +188,72 @@ leakStmt =
      expr <- expression
      return $ Leak expr
 
-ichoiceExpr :: Parser Expr
-ichoiceExpr = 
-  do {-expr <- angles expression
-     expr1 <- expression
-     reserved "|"
-     expr2 <- expression
-     list <- (sepBy1 expression (reserved "|"))
-     let expr1 = head list
-     let expr2 = head list
-     let expr = head list
-     -}
-     expr1 <- expression 
-     reserved "|"
-     expr2 <- expression
-     reserved "|"
-     expr <- expression
-     return $ Ichoice expr1 expr2 expr
-
--- decimalRat :: Monad m => ParsecT String u m Rational
-decimalRat = 
-  do ns <- many1 digit
-     ms <- (char '.' >> many digit) <|> return []
-     let pow10 = toInteger $ length ms
-     let (Right n) = parse natural "" (ns ++ ms)
-     return (n % (10 ^ pow10))
+--
+-- Expressions
+--
 
 expression :: Parser Expr
-expression = expression'-- whiteSpace >> expression'
+expression =
+   buildExpressionParser eOperators eTerm << whiteSpace
+      <?> "expression"
 
-expression':: Parser Expr
-expression' = 
-         -- (angles ichoiceExpr) 
-         -- (parens expression) 
-         buildExpressionParser operators term 
-         <?> "Can't find: expression"
-
--- operators :: forall a. Show a => [[Operator Char st (Expr a)]]
-
-reservedOpW op r = try (whiteSpace >> reservedOp op) >> return r
-
-ichoseOp = do whiteSpace
-              reservedOp "["
-              expr <- expression
-              reservedOp "]"
-              return $ \ x y -> ( Ichoice x y expr)
-operators = 
-        [ [Prefix (reservedOpW "-"  (Neg             ))]
-        , [Prefix (reservedOpW "~"  (Not             ))]
-        , [Infix  (reservedOpW "*"  (ABinary Multiply)) AssocLeft,
-           Infix  (reservedOpW "/"  (ABinary Divide  )) AssocLeft,
-           Infix  (reservedOpW "+"  (ABinary Add     )) AssocLeft,
-           Infix  (reservedOpW "-"  (ABinary Subtract)) AssocLeft]
-        , [Infix  (reservedOpW "&&" (BBinary And     )) AssocLeft,
-           Infix  (reservedOpW "||" (BBinary Or      )) AssocLeft]
-        , [Infix  (try ichoseOp)                        AssocLeft]
-        , [Infix  (reservedOpW ">"  (RBinary Gt      )) AssocLeft] 
-        , [Infix  (reservedOpW "<"  (RBinary Lt      )) AssocLeft] 
-        , [Infix  (reservedOpW ">=" (RBinary Ge      )) AssocLeft] 
-        , [Infix  (reservedOpW "<=" (RBinary Le      )) AssocLeft] 
-        , [Infix  (reservedOpW "==" (RBinary Eq      )) AssocLeft] 
+eOperators = 
+        [ [Prefix (reservedOp "-"  >> return Neg               )          ]
+        , [Prefix (reservedOp "~"  >> return Not               )          ]
+        , [Infix  (reservedOp "*"  >> return (ABinary Multiply)) AssocLeft,
+           Infix  (reservedOp "/"  >> return (ABinary Divide  )) AssocLeft,
+           Infix  (reservedOp "+"  >> return (ABinary Add     )) AssocLeft,
+           Infix  (reservedOp "-"  >> return (ABinary Subtract)) AssocLeft]
+        , [Infix  (reservedOp "&&" >> return (BBinary And     )) AssocLeft,
+           Infix  (reservedOp "||" >> return (BBinary Or      )) AssocLeft]
+        , [Infix  (kChoice Ichoice)                              AssocLeft]
+        , [Infix  (reservedOp ">"  >> return (RBinary Gt)      ) AssocLeft] 
+        , [Infix  (reservedOp "<"  >> return (RBinary Lt)      ) AssocLeft] 
+        , [Infix  (reservedOp ">=" >> return (RBinary Ge)      ) AssocLeft] 
+        , [Infix  (reservedOp "<=" >> return (RBinary Le)      ) AssocLeft] 
+        , [Infix  (reservedOp "==" >> return (RBinary Eq)      ) AssocLeft] 
         ]
 
-term :: Parser Expr
-term = whiteSpace >> (parens expression
-   <|> (reserved "true"  >> return (BoolConst True ) <?> "fail: true")
-   <|> (reserved "false" >> return (BoolConst False) <?> "fail: false")
-   <|> (ifExpr <?> "parse fail: if-expr")
-   <|> (liftM RationalConst (try decimalRat) <?> "fail: rat")
-   <|> setExpr
-   <|> liftM Var identifier
-   <?> "parse fail: term")
-   -- <|> tmpExpr
-   -- <|> tExpression
-   -- <|> rExpression
+eTerm :: Parser Expr
+eTerm = (parens expression
+        <|> (reserved "true"  >> return (BoolConst True ) <?> "true")
+        <|> (reserved "false" >> return (BoolConst False) <?> "false")
+        <|> ifExpr
+        <|> setExpr
+        <|> (liftM RationalConst (try decimalRat) <?> "rat")
+        <|> (liftM Var identifier <?> "var")
+        <?> "eTerm") << whiteSpace
 
-ifExpr = do reserved "if"
-            cond <- expression
-            reserved "then"
-            expr1 <- expression
-            reserved "else"
-            expr2 <- expression
-            return $ ExprIf cond expr1 expr2
+ifExpr =
+  do reserved "if"
+     cond <- expression
+     reserved "then"
+     expr1 <- expression
+     reserved "else"
+     expr2 <- expression
+     reserved "fi"
+     return $ ExprIf cond expr1 expr2
+   <?> "if-expr"
 
-setValue = do list <- (sepBy1 expression (reserved ","))
-              return list
 
 setExpr = do reserved "set"
              reservedOp "{"
-             list <- (sepBy1 expression' (reserved ","))
+             list <- sepBy expression (symbol ",")
              reservedOp "}"
              let values = fromList list
              return $ Eset values
 
-tmpExpr = 
-        (do a1 <- (liftM RationalConst decimalRat)
-            whiteSpace
-            op <- relation
-            a2 <- expression
-            return $ RBinary op a1 a2)
-
-tExpression = 
-  try 
-  (do a1 <- (liftM Var identifier)
-      op <- relation
-      a2 <- expression
-      return $ RBinary op a1 a2)
-  <|>
-  (do a1 <- (liftM Var identifier)
-      return a1)
-
-vExpression = 
-  do a1 <- (liftM Var identifier) 
-     op <- relation
-     a2 <- expression 
-     return $ RBinary op a1 a2
-
-rExpression =
-  do a1 <- expression
-     op <- relation
-     a2 <- expression 
-     return $ RBinary op a1 a2
-
-relation =   (reservedOp ">" >> return Gt)
-         <|> (reservedOp "<" >> return Lt)
-         <|> (reservedOp "<=" >> return Le)
-         <|> (reservedOp ">=" >> return Ge)
-         <|> (reservedOp "==" >> return Eq)
-
 -- Output only
+
 parseString :: String -> Stmt
 parseString str =
-        case parse whileParser "" str of
+        case parse statements "" str of
           Left e  -> error $ show e
           Right r -> r
 
 parseFile :: String -> IO Stmt
 parseFile file =
         do program  <- readFile file
-           case parse whileParser "" program of
+           case parse statements "" program of
                 Left e  -> print e >> fail "parse error"
                 Right r -> return r

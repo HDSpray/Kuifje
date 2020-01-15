@@ -13,11 +13,13 @@ import Data.Semigroup
 import Data.Ratio
 import Data.Map.Strict
 import Data.List
+import qualified Data.Set as DSET
 
 import Language.Kuifje.Distribution
 import PrettyPrint 
 import Language.Kuifje.Semantics
 import Language.Kuifje.Syntax
+import Control.Applicative
 
 import System.IO 
 import Text.ParserCombinators.Parsec
@@ -27,60 +29,82 @@ import Text.ParserCombinators.Parsec.Expr
 -- type VEnv = E.Env Value
 -- type Gamma = E.Env Value 
 
+{-
 aOperator :: (Rational -> Rational -> Rational) -> 
         Dist (Either Bool Rational) -> 
         Dist (Either Bool Rational) -> 
         Dist (Either Bool Rational)
-aOperator op d1 d2 = 
-  D $ fromListWith (+) [((Right (op x y)), p * q) | (Right x, p) <- toList $ runD d1,
-                                                    (Right y, q) <- toList $ runD d2]
-cOperator op d1 d2 = 
-  D $ fromListWith (+) [((Left (op x y)), p * q)  | (Right x, p) <- toList $ runD d1,
-                                                    (Right y, q) <- toList $ runD d2]
-bOperator op d1 d2 = 
-  D $ fromListWith (+) [((Left (op x y)), p * q)  | (Left x, p) <- toList $ runD d1,
-                                                    (Left y, q) <- toList $ runD d2]
+-}
 
-evalE :: Expr -> (Gamma ~> (Either Bool Rational))
+-- combine = liftA2 (:)
+
+
+aOperatorWarpper op (R x) (R y) = 
+        case op of 
+          Add      -> R $ (+) x y
+          Subtract -> R $ (-) x y
+          Multiply -> R $ (*) x y
+          Divide   -> R $ (/) x y
+aOperatorWarpper op (S x) (S y) = 
+        case op of 
+          Add      -> S $ DSET.union x y
+          Subtract -> S $ x DSET.\\ y
+          otherwise -> error "Unknow set operation"
+        
+
+        {-
+aOperator op d1 d2 = 
+  D $ fromListWith (+) [((R (op x y)), p * q) | (R x, p) <- toList $ runD d1,
+                                                (R y, q) <- toList $ runD d2]
+                                                -}
+
+aOperator op d1 d2 = 
+  D $ fromListWith (+) [((aOperatorWarpper op x y), p * q) | (x, p) <- toList $ runD d1,
+                                                             (y, q) <- toList $ runD d2]
+cOperator op d1 d2 = 
+  D $ fromListWith (+) [((B (op x y)), p * q) | (R x, p) <- toList $ runD d1,
+                                                (R y, q) <- toList $ runD d2]
+bOperator op d1 d2 = 
+  D $ fromListWith (+) [((B (op x y)), p * q) | (B x, p) <- toList $ runD d1,
+                                                (B y, q) <- toList $ runD d2]
+
+evalE :: Expr -> (Gamma ~> Value)
 evalE (Var id) = \s -> case E.lookup s id of 
-                          Just (R r) -> (return (Right r))
-                          Just (B b) -> (return (Left b))
-evalE (RationalConst r) = \s -> return (Right r)
+                          Just v -> (return v)
+                          otherwise -> error "Variable not in scope"
+evalE (RationalConst r) = \s -> return (R r)
 evalE (Neg r) = \s -> 
         let r' = (evalE r) s in 
-            (fmap (\p -> case p of (Right p') -> Right (-1 * p'))) r'
+            (fmap (\p -> case p of 
+                           (R p') -> R (-1 * p'))) r'
 evalE (ExprIf cond e1 e2) = \s -> 
         let cond' = runD $ (evalE cond) s
             e1' = (evalE e1) s
             e2' = (evalE e2) s 
-            d1 = case Data.Map.Strict.lookup (Left True) cond' of 
+            d1 = case Data.Map.Strict.lookup (B True) cond' of 
                    (Just p)  -> D $ Data.Map.Strict.map (*p) $ runD e1'
                    otherwise -> D $ Data.Map.Strict.empty
-            d2 = case Data.Map.Strict.lookup (Left False) cond' of 
+            d2 = case Data.Map.Strict.lookup (B False) cond' of 
                    (Just p)  -> D $ Data.Map.Strict.map (*p) $ runD e2'
                    otherwise -> D $ Data.Map.Strict.empty
          in D $ unionWith (+) (runD d1) (runD d2)
 evalE (ABinary op e1 e2) = \s -> 
   let e1' = (evalE e1) s
       e2' = (evalE e2) s 
-   in case op of 
-        Add      -> (aOperator (+) e1' e2')
-        Subtract -> (aOperator (-) e1' e2')
-        Multiply -> (aOperator (*) e1' e2')
-        Divide   -> (aOperator (/) e1' e2')
+   in aOperator op e1' e2' 
 evalE (Ichoice e1 e2 p) = \s -> 
   let e1' = (evalE e1) s
       e2' = (evalE e2) s 
-      p'  = Data.List.foldr (\x y -> case x of (Right x', q) -> x'*q*y) 1 
+      p'  = Data.List.foldr (\x y -> case x of (R x', q) -> x'*q*y) 1 
               $ toList $ runD $ (evalE p ) s
       d1 = D $ Data.Map.Strict.map (*p') $ runD e1'
       d2 = D $ Data.Map.Strict.map (*(1-p')) $ runD e2'
    in D $ unionWith (+) (runD d1) (runD d2)
-evalE (BoolConst b) = \s -> return (Left b)
+evalE (BoolConst b) = \s -> return (B b)
 evalE (Not b) = \s -> 
         let r' = (evalE b) s 
          in (fmap (\bv -> case bv of 
-                            (Left b') -> Left (not b'))) r'
+                            (B b') -> B (not b'))) r'
 evalE (BBinary op e1 e2) = \s -> 
   let e1' = (evalE e1) s
       e2' = (evalE e2) s in 
@@ -97,22 +121,41 @@ evalE (RBinary op e1 e2) = \s ->
         Le -> (cOperator (<=) e1' e2')
         Eq -> (cOperator (==) e1' e2')
         Ne -> (cOperator (/=) e1' e2')
+evalE (Eset set) = \s -> 
+        let exprToValue elem = toList (runD ((evalE elem) s))
+            distList = Data.List.map exprToValue (DSET.toList set) 
+            tmpf2 :: (Value, Prob) -> (Value, Prob) -> (Value, Prob)
+            tmpf2 (S a, b) (c, d) = (S (DSET.insert c a), b*d)
+            -- helperFun :: [()]
+            helperFun x y = liftA2 tmpf2 y x
+            init :: [(Value, Prob)]
+            init = [(S DSET.empty, 1)]
+            resultList :: [(Value, Prob)]
+            resultList = Data.List.foldr helperFun init distList
+         in D $ fromListWith (+) resultList
+
+
+
+-- setHelper (x, p) (y, q) = 
 
 translateKuifje :: Stmt -> Kuifje Gamma 
 translateKuifje (Seq []) = skip
 translateKuifje (Seq ls) = translateKuifje (head ls) <> translateKuifje (Seq (tail ls))
 translateKuifje (Assign id expr) = Language.Kuifje.Syntax.update (\s -> 
         let currS = (evalE expr) s in
-            fmap (\r -> case r of 
-                          (Right r) -> E.add s (id, R r)
-                          (Left b)  -> E.add s (id, B b)) currS)
+            fmap (\r -> E.add s (id, r)) currS)
+                    {-
+                    case r of 
+                          (R r) -> E.add s (id, R r)
+                          (B b) -> E.add s (id, B b)) currS)
+                          -}
 translateKuifje (Syntax.While e s) = 
         Language.Kuifje.Syntax.while (\s -> 
                 let currS = (evalE e) s in 
-                    fmap (\r -> case r of (Left b) -> b) currS) (translateKuifje s)
+                    fmap (\r -> case r of (B b) -> b) currS) (translateKuifje s)
 translateKuifje (Syntax.If e s1 s2) = 
         Language.Kuifje.Syntax.cond 
-          (\s -> let currS = (evalE e) s in fmap (\r -> case r of (Left b) -> b) currS) 
+          (\s -> let currS = (evalE e) s in fmap (\r -> case r of (B b) -> b) currS) 
           (translateKuifje s1) 
           (translateKuifje s2)
 translateKuifje Syntax.Skip = skip
@@ -121,7 +164,7 @@ translateKuifje (Vis s) = undefined
 translateKuifje (Echoice s1 s2 p) = 
         Language.Kuifje.Syntax.cond 
           (\s -> let p' = (evalE (Ichoice (BoolConst True) (BoolConst False) p) s) 
-                  in (fmap (\r -> case r of (Left b) -> b)) p') 
+                  in (fmap (\r -> case r of (B b) -> b)) p') 
           (translateKuifje s1) 
           (translateKuifje s2)
 
