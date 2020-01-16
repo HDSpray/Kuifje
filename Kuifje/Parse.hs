@@ -95,7 +95,8 @@ s << t = do { x <- s;  t; return x }
 decimalRat :: Parser Rational
 decimalRat = 
   do ns <- many1 digit
-     ms <- try (char '.' >> many digit) <|> return [] let pow10 = toInteger $ length ms
+     ms <- try (char '.' >> many digit) <|> return [] 
+     let pow10 = toInteger $ length ms
      let (Right n) = parse natural "" (ns ++ ms)
      return (n % (10 ^ pow10))
 
