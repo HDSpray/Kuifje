@@ -45,6 +45,8 @@ aOperatorWarpper op (R x) (R y) =
           Subtract -> R $ (-) x y
           Multiply -> R $ (*) x y
           Divide   -> R $ (/) x y
+          -- Rem      -> R $ ((rem) ((fromRational :: Rational -> Integer) x) ((fromRational :: Rational -> Integer) y))%1
+          
 aOperatorWarpper op (S x) (S y) = 
         case op of 
           Add      -> S $ DSET.union x y

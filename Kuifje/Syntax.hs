@@ -48,7 +48,7 @@ data ABinOp = Add
             | Subtract 
             | Multiply 
             | Divide 
-            -- | Rem
+            | Rem
             deriving (Show, Ord, Eq)
 
 data Stmt = Seq [Stmt] 

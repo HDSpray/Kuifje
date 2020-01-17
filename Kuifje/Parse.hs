@@ -66,6 +66,7 @@ languageDef =
                                       , "=="
                                       , "&&"
                                       , "||"
+                                      , "%"
                                       ]
             }
 
@@ -95,7 +96,8 @@ s << t = do { x <- s;  t; return x }
 decimalRat :: Parser Rational
 decimalRat = 
   do ns <- many1 digit
-     ms <- try (char '.' >> many digit) <|> return [] let pow10 = toInteger $ length ms
+     ms <- try (char '.' >> many digit) <|> return [] 
+     let pow10 = toInteger $ length ms
      let (Right n) = parse natural "" (ns ++ ms)
      return (n % (10 ^ pow10))
 
@@ -203,6 +205,7 @@ eOperators =
         , [Infix  (reservedOp "*"  >> return (ABinary Multiply)) AssocLeft,
            Infix  (reservedOp "/"  >> return (ABinary Divide  )) AssocLeft,
            Infix  (reservedOp "+"  >> return (ABinary Add     )) AssocLeft,
+           Infix  (reservedOp "%"  >> return (ABinary Rem     )) AssocLeft,
            Infix  (reservedOp "-"  >> return (ABinary Subtract)) AssocLeft]
         , [Infix  (reservedOp "&&" >> return (BBinary And     )) AssocLeft,
            Infix  (reservedOp "||" >> return (BBinary Or      )) AssocLeft]
