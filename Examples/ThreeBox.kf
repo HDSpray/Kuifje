@@ -1,0 +1,3 @@
+box1 = set {1, 1};
+box2 = set {0, 0};
+box3 = set {1, 1};

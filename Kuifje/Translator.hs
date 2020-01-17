@@ -38,6 +38,9 @@ aOperator :: (Rational -> Rational -> Rational) ->
 
 -- combine = liftA2 (:)
 
+(*^*) :: (RealFrac a, RealFrac b) => a -> b -> a
+x *^* y = realToFrac $ realToFrac x ** realToFrac y
+
 
 aOperatorWarpper op (R x) (R y) = 
         case op of 
@@ -45,6 +48,9 @@ aOperatorWarpper op (R x) (R y) =
           Subtract -> R $ (-) x y
           Multiply -> R $ (*) x y
           Divide   -> R $ (/) x y
+          Pow      -> R $ x *^* y -- ((**) (truncate x) (truncate y)) % 1
+          IDivide  -> R $ (div (truncate x) (truncate y)) % 1
+          Rem      -> R $ (rem (truncate x) (truncate y)) % 1
           -- Rem      -> R $ ((rem) ((fromRational :: Rational -> Integer) x) ((fromRational :: Rational -> Integer) y))%1
           
 aOperatorWarpper op (S x) (S y) = 
@@ -52,7 +58,6 @@ aOperatorWarpper op (S x) (S y) =
           Add      -> S $ DSET.union x y
           Subtract -> S $ x DSET.\\ y
           otherwise -> error "Unknow set operation"
-        
 
         {-
 aOperator op d1 d2 = 
@@ -102,6 +107,13 @@ evalE (Ichoice e1 e2 p) = \s ->
       d1 = D $ Data.Map.Strict.map (*p') $ runD e1'
       d2 = D $ Data.Map.Strict.map (*(1-p')) $ runD e2'
    in D $ unionWith (+) (runD d1) (runD d2)
+evalE (Ichoices ls) = 
+   if length ls == 1 
+      then evalE $ head ls
+      else evalE $ Ichoice 
+                          (head ls) 
+                          (Ichoices (tail ls)) 
+                          (RationalConst (1 % (toInteger (length ls))))
 evalE (BoolConst b) = \s -> return (B b)
 evalE (Not b) = \s -> 
         let r' = (evalE b) s 
@@ -111,8 +123,8 @@ evalE (BBinary op e1 e2) = \s ->
   let e1' = (evalE e1) s
       e2' = (evalE e2) s in 
       case op of 
-        And -> (bOperator (&&) e1' e2')
-        Or  -> (bOperator (||) e1' e2')
+        And -> (bOperator (&&) e1' e2') -- /\
+        Or  -> (bOperator (||) e1' e2') -- \/
 evalE (RBinary op e1 e2) = \s -> 
   let e1' = (evalE e1) s
       e2' = (evalE e2) s in 

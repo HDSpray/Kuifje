@@ -31,6 +31,7 @@ data Expr = Var String
           | Neg Expr 
           | ABinary ABinOp Expr Expr 
           | Ichoice Expr Expr Expr -- (Expr Expr Prob)
+          | Ichoices [Expr] -- (Expr Expr Prob)
 
           -- Bool Expr
           | BoolConst Bool
@@ -48,6 +49,8 @@ data ABinOp = Add
             | Subtract 
             | Multiply 
             | Divide 
+            | Pow
+            | IDivide 
             | Rem
             deriving (Show, Ord, Eq)
 

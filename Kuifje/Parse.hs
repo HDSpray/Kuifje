@@ -49,14 +49,17 @@ languageDef =
                                       , "print"
                                       , "leak"
                                       , "observe"
+                                      , "uniform"
                                       , "|"
                                       , "@"
                                       ]
 
             , Token.reservedOpNames = ["+"
                                       , "-"
+                                      , "^"
                                       , "*"
                                       , "/"
+                                      , "div"
                                       , "<"
                                       , ">"
                                       , "~"
@@ -64,6 +67,7 @@ languageDef =
                                       , "<="
                                       , ">="
                                       , "=="
+                                      , "!="
                                       , "&&"
                                       , "||"
                                       , "%"
@@ -85,6 +89,7 @@ braces     = Token.braces     lexer
 semi       = Token.semi       lexer -- parses a semicolon
 whiteSpace = Token.whiteSpace lexer -- parses whitespace
 natural    = Token.natural    lexer
+integer    = Token.integer    lexer
 symbol     = Token.symbol     lexer
 
 --
@@ -204,8 +209,10 @@ eOperators =
         , [Prefix (reservedOp "~"  >> return Not               )          ]
         , [Infix  (reservedOp "*"  >> return (ABinary Multiply)) AssocLeft,
            Infix  (reservedOp "/"  >> return (ABinary Divide  )) AssocLeft,
+           Infix  (reservedOp "div"  >> return (ABinary IDivide  )) AssocLeft,
            Infix  (reservedOp "+"  >> return (ABinary Add     )) AssocLeft,
            Infix  (reservedOp "%"  >> return (ABinary Rem     )) AssocLeft,
+           Infix  (reservedOp "^"  >> return (ABinary Pow     )) AssocLeft,
            Infix  (reservedOp "-"  >> return (ABinary Subtract)) AssocLeft]
         , [Infix  (reservedOp "&&" >> return (BBinary And     )) AssocLeft,
            Infix  (reservedOp "||" >> return (BBinary Or      )) AssocLeft]
@@ -215,6 +222,7 @@ eOperators =
         , [Infix  (reservedOp ">=" >> return (RBinary Ge)      ) AssocLeft] 
         , [Infix  (reservedOp "<=" >> return (RBinary Le)      ) AssocLeft] 
         , [Infix  (reservedOp "==" >> return (RBinary Eq)      ) AssocLeft] 
+        , [Infix  (reservedOp "!=" >> return (RBinary Ne)      ) AssocLeft] 
         ]
 
 eTerm :: Parser Expr
@@ -223,6 +231,8 @@ eTerm = (parens expression
         <|> (reserved "false" >> return (BoolConst False) <?> "false")
         <|> ifExpr
         <|> setExpr
+        <|> try uniformIchoices
+        <|> uniformIchoicesListComp
         <|> (liftM RationalConst (try decimalRat) <?> "rat")
         <|> (liftM Var identifier <?> "var")
         <?> "eTerm") << whiteSpace
@@ -238,6 +248,26 @@ ifExpr =
      return $ ExprIf cond expr1 expr2
    <?> "if-expr"
 
+uniformIchoices = 
+        do reserved "uniform"
+           reservedOp "["
+           list <- sepBy expression (symbol ",")
+           reservedOp "]"
+           return $ Ichoices list
+
+uniformIchoicesListComp = 
+        do reserved "uniform"
+           reservedOp "["
+           l <- integer
+           symbol ".."
+           r <- integer
+           reservedOp "]"
+           return $ Ichoices [(RationalConst (x % 1)) | x <- [l..r]]
+                   {-
+uniformFromSet = 
+        do reserved "uniform"
+           reserved 
+           -}
 
 setExpr = do reserved "set"
              reservedOp "{"
