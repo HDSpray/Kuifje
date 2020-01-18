@@ -1,0 +1,17 @@
+yes := 0;
+no  := 0;
+i := 0;
+while i < 2 do
+    vote := 1 [3/4] 0;
+    yes := yes + vote;
+    no := no + (1 - vote);
+    i := i + 1;
+od;
+while i < 5 do
+    vote := 0 [3/4] 1;
+    no := no + vote;
+    yes := yes + 1 - vote;
+    i := i + 1;
+od;
+
+final := (yes > no);
