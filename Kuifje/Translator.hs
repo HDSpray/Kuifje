@@ -147,6 +147,12 @@ evalE (Eset set) = \s ->
             resultList :: [(Value, Prob)]
             resultList = Data.List.foldr helperFun init distList
          in D $ fromListWith (+) resultList
+evalE (SetIchoice e) = \s -> 
+        let d = (evalE e) s 
+            resultList = concat [[ (elem, p/(toInteger (DSET.size set) % 1))| elem <- DSET.toList set] | 
+                                        (S set, p) <- toList (runD d)]
+         in D $ fromListWith (+) resultList
+
 
 
 

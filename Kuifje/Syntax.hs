@@ -32,6 +32,7 @@ data Expr = Var String
           | ABinary ABinOp Expr Expr 
           | Ichoice Expr Expr Expr -- (Expr Expr Prob)
           | Ichoices [Expr] -- (Expr Expr Prob)
+          | SetIchoice Expr
 
           -- Bool Expr
           | BoolConst Bool

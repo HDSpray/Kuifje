@@ -231,7 +231,9 @@ eTerm = (parens expression
         <|> (reserved "false" >> return (BoolConst False) <?> "false")
         <|> ifExpr
         <|> setExpr
+        <|> try uniformFromSet
         <|> try uniformIchoices
+        <|> try uniformSetVar
         <|> uniformIchoicesListComp
         <|> (liftM RationalConst (try decimalRat) <?> "rat")
         <|> (liftM Var identifier <?> "var")
@@ -263,11 +265,21 @@ uniformIchoicesListComp =
            r <- integer
            reservedOp "]"
            return $ Ichoices [(RationalConst (x % 1)) | x <- [l..r]]
-                   {-
+
 uniformFromSet = 
         do reserved "uniform"
-           reserved 
-           -}
+           reserved "set"
+           reservedOp "{"
+           list <- sepBy expression (symbol ",")
+           reservedOp "}"
+           let values = fromList list
+           return $ SetIchoice (Eset values)
+
+uniformSetVar = 
+        do reserved "uniform"
+           expr <- liftM Var identifier
+           return $ SetIchoice expr
+
 
 setExpr = do reserved "set"
              reservedOp "{"
