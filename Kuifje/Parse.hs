@@ -80,9 +80,6 @@ identifier = Token.identifier lexer -- parses an identifier
 reserved   = Token.reserved   lexer -- parses a reserved name
 reservedOp = Token.reservedOp lexer -- parses an operator
 parens     = Token.parens     lexer -- parses surrounding parenthesis:
-                                    -- parens p
-                                    -- takes care of the parenthesis and
-                                    -- uses p to parse what's inside them
 brackets   = Token.brackets   lexer -- exterior choice
 angles     = Token.angles     lexer -- interior choice
 braces     = Token.braces     lexer 
@@ -111,7 +108,7 @@ kChoice c =
       do symbol "["
          expr <- expression
          symbol "]"
-         return $ \x y -> c x y expr  -- TODO reorder this
+         return $ \x y -> c x y expr  
 
 --
 -- Statements
@@ -129,7 +126,6 @@ statements =
 statement :: Parser Stmt
 statement = buildExpressionParser sOperators sTerm
 
-
 sOperators =
    [[Infix (kChoice Echoice) AssocLeft]]
 
@@ -141,17 +137,6 @@ sTerm = (braces statements
          <|> skipStmt
          <|> vidStmt
          <|> leakStmt) << whiteSpace
---    <|> brackets eChoiceStmt
-
--- eChoiceStmt :: Parser Stmt
--- eChoiceStmt = 
---   do 
---      expr  <- (whiteSpace >> expression)
---      reserved "|"
---      list <- (endBy1 statement (reserved "|"))
---      let stmt1 = head list
---      let stmt2 = head $ tail list
---      return $ Echoice stmt1 stmt2 expr
 
 ifStmt :: Parser Stmt
 ifStmt =
@@ -205,24 +190,24 @@ expression =
       <?> "expression"
 
 eOperators = 
-        [ [Prefix (reservedOp "-"  >> return Neg               )          ]
-        , [Prefix (reservedOp "~"  >> return Not               )          ]
-        , [Infix  (reservedOp "*"  >> return (ABinary Multiply)) AssocLeft,
-           Infix  (reservedOp "/"  >> return (ABinary Divide  )) AssocLeft,
-           Infix  (reservedOp "div"  >> return (ABinary IDivide  )) AssocLeft,
-           Infix  (reservedOp "+"  >> return (ABinary Add     )) AssocLeft,
-           Infix  (reservedOp "%"  >> return (ABinary Rem     )) AssocLeft,
-           Infix  (reservedOp "^"  >> return (ABinary Pow     )) AssocLeft,
-           Infix  (reservedOp "-"  >> return (ABinary Subtract)) AssocLeft]
-        , [Infix  (reservedOp "&&" >> return (BBinary And     )) AssocLeft,
-           Infix  (reservedOp "||" >> return (BBinary Or      )) AssocLeft]
-        , [Infix  (kChoice Ichoice)                              AssocLeft]
-        , [Infix  (reservedOp ">"  >> return (RBinary Gt)      ) AssocLeft] 
-        , [Infix  (reservedOp "<"  >> return (RBinary Lt)      ) AssocLeft] 
-        , [Infix  (reservedOp ">=" >> return (RBinary Ge)      ) AssocLeft] 
-        , [Infix  (reservedOp "<=" >> return (RBinary Le)      ) AssocLeft] 
-        , [Infix  (reservedOp "==" >> return (RBinary Eq)      ) AssocLeft] 
-        , [Infix  (reservedOp "!=" >> return (RBinary Ne)      ) AssocLeft] 
+        [ [Prefix (reservedOp "-"   >> return Neg               )          ]
+        , [Prefix (reservedOp "~"   >> return Not               )          ]
+        , [Infix  (reservedOp "*"   >> return (ABinary Multiply)) AssocLeft,
+           Infix  (reservedOp "/"   >> return (ABinary Divide  )) AssocLeft,
+           Infix  (reservedOp "div" >> return (ABinary IDivide )) AssocLeft,
+           Infix  (reservedOp "+"   >> return (ABinary Add     )) AssocLeft,
+           Infix  (reservedOp "%"   >> return (ABinary Rem     )) AssocLeft,
+           Infix  (reservedOp "^"   >> return (ABinary Pow     )) AssocLeft,
+           Infix  (reservedOp "-"   >> return (ABinary Subtract)) AssocLeft]
+        , [Infix  (reservedOp "&&"  >> return (BBinary And     )) AssocLeft,
+           Infix  (reservedOp "||"  >> return (BBinary Or      )) AssocLeft]
+        , [Infix  (kChoice Ichoice)                               AssocLeft]
+        , [Infix  (reservedOp ">"   >> return (RBinary Gt)      ) AssocLeft] 
+        , [Infix  (reservedOp "<"   >> return (RBinary Lt)      ) AssocLeft] 
+        , [Infix  (reservedOp ">="  >> return (RBinary Ge)      ) AssocLeft] 
+        , [Infix  (reservedOp "<="  >> return (RBinary Le)      ) AssocLeft] 
+        , [Infix  (reservedOp "=="  >> return (RBinary Eq)      ) AssocLeft] 
+        , [Infix  (reservedOp "!="  >> return (RBinary Ne)      ) AssocLeft] 
         ]
 
 eTerm :: Parser Expr
@@ -281,15 +266,15 @@ uniformSetVar =
            return $ SetIchoice expr
 
 
-setExpr = do reserved "set"
-             reservedOp "{"
-             list <- sepBy expression (symbol ",")
-             reservedOp "}"
-             let values = fromList list
-             return $ Eset values
+setExpr = 
+        do reserved "set"
+           reservedOp "{"
+           list <- sepBy expression (symbol ",")
+           reservedOp "}"
+           let values = fromList list
+           return $ Eset values
 
 -- Output only
-
 parseString :: String -> Stmt
 parseString str =
         case parse statements "" str of

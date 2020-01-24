@@ -25,22 +25,8 @@ import System.IO
 import Text.ParserCombinators.Parsec
 import Text.ParserCombinators.Parsec.Expr
 
--- data Value = R Rational | B Bool deriving (Show, Eq, Ord)
--- type VEnv = E.Env Value
--- type Gamma = E.Env Value 
-
-{-
-aOperator :: (Rational -> Rational -> Rational) -> 
-        Dist (Either Bool Rational) -> 
-        Dist (Either Bool Rational) -> 
-        Dist (Either Bool Rational)
--}
-
--- combine = liftA2 (:)
-
 (*^*) :: (RealFrac a, RealFrac b) => a -> b -> a
 x *^* y = realToFrac $ realToFrac x ** realToFrac y
-
 
 aOperatorWarpper op (R x) (R y) = 
         case op of 
@@ -48,22 +34,15 @@ aOperatorWarpper op (R x) (R y) =
           Subtract -> R $ (-) x y
           Multiply -> R $ (*) x y
           Divide   -> R $ (/) x y
-          Pow      -> R $ x *^* y -- ((**) (truncate x) (truncate y)) % 1
+          Pow      -> R $ x *^* y 
           IDivide  -> R $ (div (truncate x) (truncate y)) % 1
           Rem      -> R $ (rem (truncate x) (truncate y)) % 1
-          -- Rem      -> R $ ((rem) ((fromRational :: Rational -> Integer) x) ((fromRational :: Rational -> Integer) y))%1
           
 aOperatorWarpper op (S x) (S y) = 
         case op of 
           Add      -> S $ DSET.union x y
           Subtract -> S $ x DSET.\\ y
           otherwise -> error "Unknow set operation"
-
-        {-
-aOperator op d1 d2 = 
-  D $ fromListWith (+) [((R (op x y)), p * q) | (R x, p) <- toList $ runD d1,
-                                                (R y, q) <- toList $ runD d2]
-                                                -}
 
 aOperator op d1 d2 = 
   D $ fromListWith (+) [((aOperatorWarpper op x y), p * q) | (x, p) <- toList $ runD d1,
