@@ -5,7 +5,7 @@
 {-# LANGUAGE KindSignatures #-}
 
 
-module Syntax where
+module Kuifje.Syntax where
 
 import Data.Set
 

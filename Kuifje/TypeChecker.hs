@@ -1,5 +1,5 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving, TupleSections #-}
-module TypeChecker where
+module Kuifje.TypeChecker where
 
 import qualified Env as E
 import Syntax

@@ -1,11 +1,12 @@
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE TypeSynonymInstances, FlexibleInstances #-}
-module Translator where 
+module Kuifje.Translator where 
 
-import qualified Env as E
-import Parse
-import Syntax
+import qualified Kuifje.Env as E
+import Kuifje.Value
+import Kuifje.Parse
+import Kuifje.Syntax 
 
 import Prelude hiding ((!!), return, fmap, (>>=))
 import Control.Lens hiding (Profunctor)
@@ -16,7 +17,7 @@ import Data.List
 import qualified Data.Set as DSET
 
 import Language.Kuifje.Distribution
-import PrettyPrint 
+import Kuifje.PrettyPrint 
 import Language.Kuifje.Semantics
 import Language.Kuifje.Syntax
 import Control.Applicative
@@ -128,14 +129,10 @@ evalE (Eset set) = \s ->
          in D $ fromListWith (+) resultList
 evalE (SetIchoice e) = \s -> 
         let d = (evalE e) s 
-            resultList = concat [[ (elem, p/(toInteger (DSET.size set) % 1))| elem <- DSET.toList set] | 
-                                        (S set, p) <- toList (runD d)]
+            resultList = concat [[(elem, p/(toInteger (DSET.size set) % 1)) 
+                                        | elem <- DSET.toList set] 
+                                        | (S set, p) <- toList (runD d)]
          in D $ fromListWith (+) resultList
-
-
-
-
--- setHelper (x, p) (y, q) = 
 
 translateKuifje :: Stmt -> Kuifje Gamma 
 translateKuifje (Seq []) = skip
@@ -143,21 +140,16 @@ translateKuifje (Seq ls) = translateKuifje (head ls) <> translateKuifje (Seq (ta
 translateKuifje (Assign id expr) = Language.Kuifje.Syntax.update (\s -> 
         let currS = (evalE expr) s in
             fmap (\r -> E.add s (id, r)) currS)
-                    {-
-                    case r of 
-                          (R r) -> E.add s (id, R r)
-                          (B b) -> E.add s (id, B b)) currS)
-                          -}
-translateKuifje (Syntax.While e s) = 
+translateKuifje (Kuifje.Syntax.While e s) = 
         Language.Kuifje.Syntax.while (\s -> 
                 let currS = (evalE e) s in 
                     fmap (\r -> case r of (B b) -> b) currS) (translateKuifje s)
-translateKuifje (Syntax.If e s1 s2) = 
+translateKuifje (Kuifje.Syntax.If e s1 s2) = 
         Language.Kuifje.Syntax.cond 
           (\s -> let currS = (evalE e) s in fmap (\r -> case r of (B b) -> b) currS) 
           (translateKuifje s1) 
           (translateKuifje s2)
-translateKuifje Syntax.Skip = skip
+translateKuifje Kuifje.Syntax.Skip = skip
 translateKuifje (Leak e) = observe (evalE e)
 translateKuifje (Vis s) = undefined
 translateKuifje (Echoice s1 s2 p) = 
@@ -191,11 +183,11 @@ exampelS = let (Seq ls) = parseString example
                         (RationalConst (5 % 1)) 
                         (RationalConst (6 % 1)) 
                         (RationalConst (1 % 2)) )):ls
-
+                                {-
 main :: IO ()
 main = do
   putStrLn "> hyper"
   print hyper
   putStrLn "> condEntropy bayesVuln hyper"
   print $ condEntropy bayesVuln hyper
-
+-}

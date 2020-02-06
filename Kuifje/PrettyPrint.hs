@@ -1,18 +1,15 @@
 {-# LANGUAGE TypeSynonymInstances, FlexibleInstances #-}
-module PrettyPrint where
+module Kuifje.PrettyPrint where
 
 import Data.List (transpose)
+import Data.Ratio
 import Text.PrettyPrint.Boxes
 import qualified Data.Map.Strict as HM (mapWithKey, elems)
--- import qualified Data.Set.Strict as Set
-import Data.Ratio
-import qualified Env as E
+import qualified Kuifje.Env as E
 import qualified Data.Set as DSET
+import Kuifje.Value
 
 import Language.Kuifje.Distribution
-
-data Value = R Rational | B Bool | S (DSET.Set Value) deriving (Show, Eq, Ord)
-type Gamma = E.Env Value 
 
 class Boxable a where
   toBox :: a -> Box

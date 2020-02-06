@@ -1,5 +1,5 @@
 {-# LANGUAGE DeriveFunctor, DeriveFoldable, DeriveTraversable, GeneralizedNewtypeDeriving #-}
-module Env ( Env(..)
+module Kuifje.Env ( Env(..)
                  , empty
                  , lookup
                  , add

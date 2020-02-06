@@ -1,4 +1,9 @@
 module Main where
 
-main :: IO ()
-main = putStrLn "Hello, Haskell!"
+import System.Environment
+import Kuifje.Run
+
+main = do args <- getArgs
+          case args of
+            [file]    -> do runHyper file
+            otherwise -> error "Please provide a file."

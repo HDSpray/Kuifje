@@ -1,9 +1,10 @@
-module Run where
+module Kuifje.Run where
 
-import Translator
-import Parse
-import Syntax
-import PrettyPrint 
+import Kuifje.Translator
+import Kuifje.Parse
+import Kuifje.Value
+import Kuifje.Syntax
+import Kuifje.PrettyPrint 
 import System.IO 
 import Data.Map.Strict
 import Data.List
@@ -11,7 +12,7 @@ import Language.Kuifje.Distribution
 import Language.Kuifje.Semantics
 import Language.Kuifje.Syntax
 import Prelude hiding ((!!), fmap, (>>=))
-import qualified Env as E
+import qualified Kuifje.Env as E
 
 getFrom g s | Just x <- E.lookup g s = x
             | otherwise = error ("Not going to happend " ++ s)
@@ -25,7 +26,7 @@ runHyper s = do tmp <- parseFile s
                 let (env, _) = (toList $ runD kuifje) !! 0
                 let (gamma, _) = ((toList $ runD $ env) !! 0)
                 let all_var = E.allVar gamma
-                outputL [(x, Run.project x kuifje) | x <- all_var]
+                outputL [(x, Kuifje.Run.project x kuifje) | x <- all_var]
 
 
 outputL (ls) = if length ls == 1 

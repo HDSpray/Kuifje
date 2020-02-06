@@ -3,10 +3,10 @@
 {-# LANGUAGE ExistentialQuantification #-}
 {-# LANGUAGE UndecidableInstances #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-module Parse where
+module Kuifje.Parse where
 
 
-import Syntax
+import Kuifje.Syntax
 import Prelude
 import System.IO 
 import Data.Ratio
