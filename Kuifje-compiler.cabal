@@ -3,7 +3,7 @@
 
 name:                Kuifje-compiler
 version:             0.1.0.0
-synopsis:            An imperative language for QIF
+synopsis:            An imperative language for Quantitative Information Flow
 -- description:
 license:             BSD3
 license-file:        LICENSE
