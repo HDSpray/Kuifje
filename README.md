@@ -1,33 +1,25 @@
 # Kuifje
-
-## Installation
-
-Install the [Kuifje](https://github.com/martonbognar/kuifje) first
-
+An imperative language for quantitative information flow. 
 
 ## Usage
-
-on the directory on Kuifje_compiler/Kuifje/, run ghci and load the Run.hs file. 
+To run the file, you can use cabal. For example, you can run `Examples\BiasCoin.kf` by using 
 ```
-ghci Run.hs
+cabal run Examples\BiasCoin.kf
 ```
-
-inside the GHCI
-
-Run the file
-```
-*Run> runFile "../tests/<example file>"
-```
-
-Parse file only
-```
-*Run> parseFile "../tests/<example file>"
-```
-
 ## Syntax 
 coming soon
 
 ## Example
-There are some example working under the drectory of Kuifje_compiler/tests/
+There are some examples under the drectory of `Examples`
 
-Not working examples including 0_easy_ichoice.kf (a nicer way to enter the distribution), monty.kf, set.kf (Can only parse)
+A brief example `Examples\BiasCoin.kf`:
+```c
+p := uniform [0.3, 0.7];
+i := 0;
+while i < 2 do 
+    result := 0 [p] 1;
+    leak result;
+    i := i + 1;
+od;
+```
+This example demonstrates that there is a biased coin that you do not know which side bias to. It may 0.7 bias toward the head or 0.3 bias toward the head. By flipping the coin twice and leak the coin flip result, how much information you adversary would know about which way the coin bias toward. 
