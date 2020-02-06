@@ -14,7 +14,7 @@ import Data.Monoid
 import Prelude hiding (lookup)
 
 newtype Env e = Env (M.Map String e) 
-        deriving (Functor, Foldable, Traversable, Show, Eq, Ord)--, Monoid)
+        deriving (Functor, Foldable, Traversable, Show, Eq, Ord)
 
 empty :: Env e
 empty = Env M.empty

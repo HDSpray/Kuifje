@@ -4,7 +4,6 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE KindSignatures #-}
 
-
 module Kuifje.Syntax where
 
 import Data.Set
@@ -23,15 +22,16 @@ data RBinOp = Gt
             | Ne
             deriving (Show, Ord, Eq)
 
-data ExprTy = EBool | ERational
-        deriving (Show)
+data ExprTy = EBool 
+            | ERational 
+            deriving (Show)
 
 data Expr = Var String 
           | RationalConst Rational
           | Neg Expr 
           | ABinary ABinOp Expr Expr 
-          | Ichoice Expr Expr Expr -- (Expr Expr Prob)
-          | Ichoices [Expr] -- (Expr Expr Prob)
+          | Ichoice Expr Expr Expr   -- (Expr Expr Prob)
+          | Ichoices [Expr] 
           | SetIchoice Expr
 
           -- Bool Expr
@@ -44,7 +44,6 @@ data Expr = Var String
           | ExprIf Expr Expr Expr
           | Eset (Set Expr)
           deriving (Show, Eq, Ord)
-
 
 data ABinOp = Add 
             | Subtract 

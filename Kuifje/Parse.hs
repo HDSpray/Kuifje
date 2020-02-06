@@ -5,7 +5,6 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 module Kuifje.Parse where
 
-
 import Kuifje.Syntax
 import Prelude
 import System.IO 
@@ -264,7 +263,6 @@ uniformSetVar =
         do reserved "uniform"
            expr <- liftM Var identifier
            return $ SetIchoice expr
-
 
 setExpr = 
         do reserved "set"

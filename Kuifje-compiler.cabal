@@ -9,6 +9,7 @@ license:             BSD3
 license-file:        LICENSE
 author:              HDSpray
 maintainer:          d.jian@unsw.edu.au
+homepage:            https://github.com/HDSpray/Kuifje
 -- copyright:
 category:            Language
 build-type:          Simple

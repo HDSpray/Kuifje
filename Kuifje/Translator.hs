@@ -171,8 +171,8 @@ initGamma x y = let g = E.add E.empty ("x", (R x)) in
                E.add g ("y", (R y))
 
 hyper :: Dist (Dist Rational)
-hyper = let g = translateKuifje exampelS --(Parse.parseString example)
-         in project $ hysem g (uniform [E.empty])--(uniform [initGamma x y | x <- [0..1], y <- [1..2]])
+hyper = let g = translateKuifje exampelS 
+         in project $ hysem g (uniform [E.empty])
 
 example :: String
 example = "y := 0; while (x > 0) do y := x + y; x := x - 1; od;"
@@ -183,11 +183,3 @@ exampelS = let (Seq ls) = parseString example
                         (RationalConst (5 % 1)) 
                         (RationalConst (6 % 1)) 
                         (RationalConst (1 % 2)) )):ls
-                                {-
-main :: IO ()
-main = do
-  putStrLn "> hyper"
-  print hyper
-  putStrLn "> condEntropy bayesVuln hyper"
-  print $ condEntropy bayesVuln hyper
--}
